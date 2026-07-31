@@ -222,33 +222,11 @@
       <attribute name="title">
        <string>Цель</string>
       </attribute>
-      <widget class="QWidget" name="verticalLayoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>30</y>
-         <width>421</width>
-         <height>90</height>
-        </rect>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_9"/>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_11">
-          <item>
-           <widget class="QComboBox" name="cmbTarget"/>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
       <widget class="Line" name="line_2">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>120</y>
+         <y>10</y>
          <width>421</width>
          <height>20</height>
         </rect>
@@ -257,24 +235,11 @@
         <enum>Qt::Horizontal</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="label_14">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>10</y>
-         <width>431</width>
-         <height>16</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Выбор цели с фильтрацией по месторождению в зависимости от выбранной позиции</string>
-       </property>
-      </widget>
       <widget class="QLabel" name="label_15">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>140</y>
+         <y>30</y>
          <width>431</width>
          <height>16</height>
         </rect>
@@ -287,7 +252,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>240</y>
+         <y>120</y>
          <width>421</width>
          <height>31</height>
         </rect>
@@ -313,7 +278,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>190</y>
+         <y>80</y>
          <width>421</width>
          <height>20</height>
         </rect>
@@ -326,7 +291,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>210</y>
+         <y>100</y>
          <width>421</width>
          <height>20</height>
         </rect>
@@ -339,12 +304,12 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>160</y>
+         <y>50</y>
          <width>421</width>
          <height>32</height>
         </rect>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0">
         <item>
          <widget class="QgsProjectionSelectionWidget" name="mQgsProjectionSelectionWidgetTarget"/>
         </item>
@@ -354,7 +319,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>270</y>
+         <y>160</y>
          <width>421</width>
          <height>20</height>
         </rect>
@@ -367,9 +332,9 @@
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>291</y>
+         <y>181</y>
          <width>411</width>
-         <height>191</height>
+         <height>301</height>
         </rect>
        </property>
        <property name="columnCount">

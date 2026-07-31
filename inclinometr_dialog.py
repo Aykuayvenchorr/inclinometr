@@ -65,8 +65,6 @@ FORM_CLASS, _ = uic.loadUiType(
     import_from="inclinometr"
 )
 
-
-
 # ==========================================================
 # Главный класс плагина
 # ==========================================================
@@ -104,16 +102,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         # Выбранная система координат
         self.crsOutputWellHead = None
         
-        # Фильтр списка слоев - только слои точек
-        # self.mMapLayerComboBoxWellHead.setFilters(
-        #     QgsMapLayerProxyModel.PointLayer
-        # )
-        # Обработка события выбора слоя устьев
-        # self.mMapLayerComboBoxWellHead.layerChanged.connect(
-        #     self.mMapLayerComboBoxWellHeadChanged
-        # )
-
-        
 
         # Подключаем кнопку
         self.btnSelectWellHead.clicked.connect(
@@ -131,15 +119,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         
         self.selectedTarget = None
-
-        # Код месторождения выбранного устья
-        self.fieldCode = ""
-          
-        # При выборе цели из списка
-        self.cmbTarget.currentIndexChanged.connect(
-            self.targetChanged
-        )
-        
 
         # %% Вкладка --- Слои
 
@@ -276,10 +255,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             self.txtWellHeadLicense.setText(
                 str(feature[settings["WellHead"]["Layers"]["Position_WORK"]["lic"]])
             )
-            # Сохраняем код месторождения
-            self.fieldCode = str(feature["oilfield"]).split("_")[0]
-           
-                
+
             north = feature.geometry().asPoint().y()
             east = feature.geometry().asPoint().x()
             
@@ -301,14 +277,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             else:
                 self.txtWellHeadNorth.setText(f"{targetPoint.y():.3f}")
                 self.txtWellHeadEast.setText(f"{targetPoint.x():.3f}")
-        
-        # # По умолчанию отметка равна 0
-        # elevation = 0
-        # # Если точка имеет координату Z
-        # # if point.is3D():
-        # #     elevation = point.z()
-        # self.txtWellHeadElevation.setText(f"{elevation:.3f}")
-        
+            
         # Выключаем инструмент выбора
         iface.mapCanvas().unsetMapTool(
             self.wellHeadIdentifyTool
@@ -347,14 +316,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             else:
                 self.txtWellHeadNorth.setText(f"{targetPoint.y():.3f}")
                 self.txtWellHeadEast.setText(f"{targetPoint.x():.3f}")
-
-
-    # ======================================================
-    # Дополнительный обработчик выбора слоя устья (просто заглушка (костыль))
-    # ======================================================
-
-    # def mMapLayerComboBoxWellHeadChanged(self, layer):
-    #     return
 
     # ======================================================
     # Вкладка "Цели"
@@ -397,7 +358,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.selectedTargets.append(feature)
     
 
-    
         # Определяем СК слоя
         crs = self.layerTarget.crs()
     
@@ -468,54 +428,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         return northText, eastText
 
-
-    # Автоматическое заполнение списка целей в зависимости от слоя
-
-    def targetLayerChanged(self, layer):
-
-        layers = QgsProject.instance().mapLayersByName("Targets_WORK")
-        layer = layers[0] if layers else None
-
-        self.cmbTarget.clear()
-    
-        if layer is None:
-            return
-    
-        if self.fieldCode == "":
-            return
-    
-        for feature in layer.getFeatures():
-    
-            if str(feature["oilfield"]) == self.fieldCode:
-    
-                self.cmbTarget.addItem(
-                    str(feature["tid"]),
-                    feature.id()
-                )
-
-
-    def targetChanged(self, index):
-     
-        if index < 0:
-            return
-    
-        layers = QgsProject.instance().mapLayersByName("Targets_WORK")
-        layer = layers[0] if layers else None
-    
-        if layer is None:
-            return
-    
-        feature_id = self.cmbTarget.currentData()
-    
-        if feature_id is None:
-            return
-    
-        # Получаем объект по его id
-        feature = layer.getFeature(feature_id)
-    
-        # Сохраняем выбранную цель
-        self.selectedTarget = feature
-    
     # ======================================================
     # Смена системы координат целей
     # ======================================================
@@ -542,5 +454,3 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             eastText = self.tableTargets.item(
                 self.tableTargets.rowCount()-1, 2
             ).text()
-    
-   
