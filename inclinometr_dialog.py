@@ -22,33 +22,40 @@
  ***************************************************************************/
 """
 
-import os
+import os 
 import json
 import random
+
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
+from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.PyQt.QtCore import Qt
 
 from qgis.core import (
     QgsMapLayerProxyModel,
     QgsCoordinateTransform,
     QgsProject,
-    QgsPointXY
+    QgsPointXY,
+    QgsVectorLayer,
+    QgsField,
+    QgsFields,
+    QgsFeature
 )
 
 # Для функции выбора устья
 from qgis.gui import QgsMapToolIdentifyFeature
 from qgis.utils import iface
-from qgis.PyQt.QtWidgets import QMessageBox
 
-from qgis.PyQt.QtCore import Qt
-
-from qgis.core import QgsVectorLayer, QgsField, QgsFields, QgsProject
 from PyQt5.QtCore import QVariant
-from qgis.core import QgsFeature, QgsGeometry, QgsPointXY
+
 from .mathematics import Mathematics
 from .excel_reader import ExcelReader
+from .layer_manager import LayerManager
 
-# This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
+# ==========================================================
+# Загрузка интерфейса Qt Designer
+# ==========================================================
+
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(
         os.path.dirname(__file__),
@@ -59,25 +66,17 @@ FORM_CLASS, _ = uic.loadUiType(
 )
 
 
-class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
-    def targetLayerChanged(self, layer):
 
-        self.cmbTarget.clear()
-    
-        if layer is None:
-            return
-    
-        if self.fieldCode == "":
-            return
-    
-        for feature in layer.getFeatures():
-    
-            if str(feature["oilfield"]) == self.fieldCode:
-    
-                self.cmbTarget.addItem(
-                    str(feature["tid"]),
-                    feature.id()
-                )
+# ==========================================================
+# Главный класс плагина
+# ==========================================================
+
+class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
+
+    # ======================================================
+    # Инициализация
+    # ======================================================
+
     def __init__(self, parent=None):
         """Constructor."""
 
@@ -88,7 +87,8 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.show()
-        
+
+        self.layerManager = LayerManager(self)
 
         # %% Вкладка --- Устье ---
 
@@ -105,13 +105,13 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.crsOutputWellHead = None
         
         # Фильтр списка слоев - только слои точек
-        self.mMapLayerComboBoxWellHead.setFilters(
-            QgsMapLayerProxyModel.PointLayer
-        )
+        # self.mMapLayerComboBoxWellHead.setFilters(
+        #     QgsMapLayerProxyModel.PointLayer
+        # )
         # Обработка события выбора слоя устьев
-        self.mMapLayerComboBoxWellHead.layerChanged.connect(
-            self.mMapLayerComboBoxWellHeadChanged
-        )
+        # self.mMapLayerComboBoxWellHead.layerChanged.connect(
+        #     self.mMapLayerComboBoxWellHeadChanged
+        # )
 
         
 
@@ -134,17 +134,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Код месторождения выбранного устья
         self.fieldCode = ""
-        
-        # Фильтр только точечных слоев
-        self.mMapLayerComboBoxTarget.setFilters(
-            QgsMapLayerProxyModel.PointLayer
-        )
-        
-        # При смене слоя целей обновляем список целей
-        self.mMapLayerComboBoxTarget.layerChanged.connect(
-            self.targetLayerChanged
-        )
-        
+          
         # При выборе цели из списка
         self.cmbTarget.currentIndexChanged.connect(
             self.targetChanged
@@ -169,22 +159,23 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         
         
         # Подключение кнопок для выбора слоев
-        self.btnAddPositionLayer.clicked.connect(self.addPositionLayer)
-        self.btnRemovePositionLayer.clicked.connect(self.removePositionLayer)
-        
-        self.btnAddTargetLayer.clicked.connect(self.addTargetLayer)
-        self.btnRemoveTargetLayer.clicked.connect(self.removeTargetLayer)
-        
+ 
+        self.btnAddPositionLayer.clicked.connect(self.layerManager.addPositionLayer)
+        self.btnRemovePositionLayer.clicked.connect(self.layerManager.removePositionLayer)
+
+        self.btnAddTargetLayer.clicked.connect(self.layerManager.addTargetLayer)
+        self.btnRemoveTargetLayer.clicked.connect(self.layerManager.removeTargetLayer)
+
         # добавление кнопок создания рабочих слоев
-        self.btnCreatePositionsLayer.clicked.connect(self.createPositionsLayer)
-        self.btnCreateTargetsLayer.clicked.connect(self.createTargetsLayer)
+        self.btnCreatePositionsLayer.clicked.connect(self.layerManager.createPositionsLayer)
+        self.btnCreateTargetsLayer.clicked.connect(self.layerManager.createTargetsLayer)
         
         # Рабочие слои
         self.layerPositions = None
         self.layerTargets = None
         self.layerOilfields = None
         
-        self.btnCreateOilFieldsLayer.clicked.connect(self.createOilFieldsLayer)
+        self.btnCreateOilFieldsLayer.clicked.connect(self.layerManager.createOilFieldsLayer)
         
         self.btnSelectTarget.clicked.connect(
             self.selectTarget
@@ -205,7 +196,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.selectedTargets = []
         
         self.excel = ExcelReader(self)
-
+ 
 
         self.btnLoadInclinometry.clicked.connect(
             self.math.loadInclinometry
@@ -218,147 +209,24 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnCalculateDeviation.clicked.connect(
             self.math.calculationDeviation
         )
-        # %%
-    def selectTarget(self):
-        """Выбор цели"""
-    
-        layer = QgsProject.instance().mapLayersByName("Targets_WORK")
-    
-        if not layer:
-            QMessageBox.warning(
-                self,
-                "Внимание",
-                "Не найден слой Targets_WORK."
-            )
-            return 
-        
-        self.layerTarget = layer[0]
-    
-        self.targetIdentifyTool = QgsMapToolIdentifyFeature(
-            iface.mapCanvas()
-        )
-    
-        self.targetIdentifyTool.setLayer(self.layerTarget)
-    
-        self.targetIdentifyTool.featureIdentified.connect(
-            self.targetSelected
-        )
-    
-        iface.mapCanvas().setMapTool(
-            self.targetIdentifyTool
-        )
-    def addTargetToTable(self, feature):
-    
-        row = self.tableTargets.rowCount()
-        self.tableTargets.insertRow(row)
-    
-        # ID цели
-        self.tableTargets.setItem(
-            row,
-            0,
-            QtWidgets.QTableWidgetItem(str(feature["tid"]))
-        )
-    
-        # Координаты
-        north = feature.geometry().asPoint().y()
-        east = feature.geometry().asPoint().x()
-    
-        transform = QgsCoordinateTransform(
-            self.layerTarget.crs(),
-            self.crsOutputTarget,
-            QgsProject.instance()
-        )
-    
-        targetPoint = transform.transform(
-            QgsPointXY(east, north)
-        )
-    
-        if self.crsOutputTarget.isGeographic():
-            northText = f"{targetPoint.y():.10f}"
-            eastText = f"{targetPoint.x():.10f}"
-        else:
-            northText = f"{targetPoint.y():.3f}"
-            eastText = f"{targetPoint.x():.3f}"
-    
-        self.tableTargets.setItem(
-            row,
-            1,
-            QtWidgets.QTableWidgetItem(northText)
-        )
-    
-        self.tableTargets.setItem(
-            row,
-            2,
-            QtWidgets.QTableWidgetItem(eastText)
-        )
-        self.tableTargets.setItem(
-            row,
-            3,
-            QtWidgets.QTableWidgetItem(str(feature["ttvd"]))
-        )
-        return northText, eastText
-    
-    
-    def targetSelected(self, feature):
-    
-        # Сохраняем выбранную цель
-        self.selectedTargets.append(feature)
-    
-        # Название цели
-        self.txtTargetName.setText(
-            str(feature["tid"])
-        )
-    
-        # Определяем СК слоя
-        crs = self.layerTarget.crs()
-    
-        self.crsLayerTarget = crs
-        self.crsOutputTarget = crs
-    
-        self.mQgsProjectionSelectionWidgetTarget.blockSignals(True)
-        self.mQgsProjectionSelectionWidgetTarget.setCrs(crs)
-        self.mQgsProjectionSelectionWidgetTarget.blockSignals(False)
-    
-        northText, eastText = self.addTargetToTable(feature)
-    
-        self.txtTargetNorth.setText(northText)
-        self.txtTargetEast.setText(eastText)
-    
-        iface.mapCanvas().unsetMapTool(
-            self.targetIdentifyTool
-        )
-    def mMapLayerComboBoxWellHeadChanged(self, layer):
-        """Метод обработки события выбора слоя устьев"""
-        if layer is None:
-            self.mQgsProjectionSelectionWidgetWellHead.setEnabled(False)
-        else:
-            # Здесь можно сделать дополнительную проверку на то,
-            # что это децствительно слой устьев или позиций
-            
-            # Включаем выбор системы координат
-            self.mQgsProjectionSelectionWidgetWellHead.setEnabled(True)
-            # Получаем систему координат слоя
-            crs = layer.crs()
-            self.crsLayerWellHead = crs
-            self.crsOutputWellHead = crs
-            # Устанавливаем ее в виджет
-            self.mQgsProjectionSelectionWidgetWellHead.setCrs(crs)
-            # Включаем кнопку выбора устья
-            self.btnSelectWellHead.setEnabled(True)
-   
-    # =========================================================
-    # %% ФУНКЦИИ УСТЬЯ
+
+    # ======================================================
+    # Вкладка "Устье"
+    # ======================================================
+
 
     def selectWellHead(self):
-        """Выбор устья"""    
         self.selectFeature(
-            self.mMapLayerComboBoxWellHead,
             self.wellHeadSelected
         )
-        
-    def selectFeature(self, layerComboBox, callback):
+
+
+    def selectFeature(self, callback):
         """Универсальная функция выбора объекта на карте"""
-        layer = layerComboBox.currentLayer()
+        layers = QgsProject.instance().mapLayersByName("Positions_WORK")
+        layer = layers[0] if layers else None
+        self.crsLayerWellHead = layer.crs()
+        self.crsOutputWellHead = layer.crs()
         self.layerWellHead = layer
 
         if layer is None:
@@ -380,7 +248,8 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         iface.mapCanvas().setMapTool(
             self.wellHeadIdentifyTool
         )
-        
+
+
     def wellHeadSelected(self, feature):
         # Сохраняем выбранный объект
         self.selectedWellHead = feature
@@ -445,8 +314,11 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             self.wellHeadIdentifyTool
         )
 
-    #%% ФУНКЦИЯ СМЕНЫ СК
-    
+
+    # ======================================================
+    # Смена системы координат устья
+    # ======================================================
+
     def wellHeadCrsChanged(self, crs):
         
         self.crsLayerWellHead = self.crsOutputWellHead
@@ -475,14 +347,179 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             else:
                 self.txtWellHeadNorth.setText(f"{targetPoint.y():.3f}")
                 self.txtWellHeadEast.setText(f"{targetPoint.x():.3f}")
-            
-            # QMessageBox.warning(
-            #     self,
-            #     "Внимание",
-            #     f"Изменилась система координат! {targetPoint.y()} {targetPoint.x()}"
-            # )
+
+
+    # ======================================================
+    # Дополнительный обработчик выбора слоя устья (просто заглушка (костыль))
+    # ======================================================
+
+    # def mMapLayerComboBoxWellHeadChanged(self, layer):
+    #     return
+
+    # ======================================================
+    # Вкладка "Цели"
+    # ======================================================
+
+
+    def selectTarget(self):
+        """Выбор цели"""
+    
+        layer = QgsProject.instance().mapLayersByName("Targets_WORK")
+    
+        if not layer:
+            QMessageBox.warning(
+                self,
+                "Внимание",
+                "Не найден слой Targets_WORK."
+            )
+            return 
         
-     # Автоматическое заполнение списка целей в зависимости от слоя
+        self.layerTarget = layer[0]
+    
+        self.targetIdentifyTool = QgsMapToolIdentifyFeature(
+            iface.mapCanvas()
+        )
+    
+        self.targetIdentifyTool.setLayer(self.layerTarget)
+    
+        self.targetIdentifyTool.featureIdentified.connect(
+            self.targetSelected
+        )
+    
+        iface.mapCanvas().setMapTool(
+            self.targetIdentifyTool
+        )
+
+
+    def targetSelected(self, feature):
+    
+        # Сохраняем выбранную цель
+        self.selectedTargets.append(feature)
+    
+
+    
+        # Определяем СК слоя
+        crs = self.layerTarget.crs()
+    
+        self.crsLayerTarget = crs
+        self.crsOutputTarget = crs
+        self.addTargetToTable(feature)
+        self.mQgsProjectionSelectionWidgetTarget.blockSignals(True)
+        self.mQgsProjectionSelectionWidgetTarget.setCrs(crs)
+        self.mQgsProjectionSelectionWidgetTarget.blockSignals(False)
+    
+
+    
+        iface.mapCanvas().unsetMapTool(
+            self.targetIdentifyTool
+        )
+
+
+    def addTargetToTable(self, feature):
+    
+        row = self.tableTargets.rowCount()
+        self.tableTargets.insertRow(row)
+    
+        # ID цели
+        self.tableTargets.setItem(
+            row,
+            0,
+            QtWidgets.QTableWidgetItem(str(feature["tid"]))
+        )
+    
+        # Координаты
+        north = feature.geometry().asPoint().y()
+        east = feature.geometry().asPoint().x()
+    
+        transform = QgsCoordinateTransform(
+            self.layerTarget.crs(),
+            self.crsOutputTarget,
+            QgsProject.instance()
+        )
+    
+        targetPoint = transform.transform(
+            QgsPointXY(east, north)
+        )
+    
+        if self.crsOutputTarget.isGeographic():
+            northText = f"{targetPoint.y():.10f}"
+            eastText = f"{targetPoint.x():.10f}"
+        else:
+            northText = f"{targetPoint.y():.3f}"
+            eastText = f"{targetPoint.x():.3f}"
+    
+        self.tableTargets.setItem(
+            row,
+            1,
+            QtWidgets.QTableWidgetItem(northText)
+        )
+    
+        self.tableTargets.setItem(
+            row,
+            2,
+            QtWidgets.QTableWidgetItem(eastText)
+        )
+
+        self.tableTargets.setItem(
+            row,
+            3,
+            QtWidgets.QTableWidgetItem(str(feature["ttvd"]))
+        )
+
+        return northText, eastText
+
+
+    # Автоматическое заполнение списка целей в зависимости от слоя
+
+    def targetLayerChanged(self, layer):
+
+        layers = QgsProject.instance().mapLayersByName("Targets_WORK")
+        layer = layers[0] if layers else None
+
+        self.cmbTarget.clear()
+    
+        if layer is None:
+            return
+    
+        if self.fieldCode == "":
+            return
+    
+        for feature in layer.getFeatures():
+    
+            if str(feature["oilfield"]) == self.fieldCode:
+    
+                self.cmbTarget.addItem(
+                    str(feature["tid"]),
+                    feature.id()
+                )
+
+
+    def targetChanged(self, index):
+     
+        if index < 0:
+            return
+    
+        layers = QgsProject.instance().mapLayersByName("Targets_WORK")
+        layer = layers[0] if layers else None
+    
+        if layer is None:
+            return
+    
+        feature_id = self.cmbTarget.currentData()
+    
+        if feature_id is None:
+            return
+    
+        # Получаем объект по его id
+        feature = layer.getFeature(feature_id)
+    
+        # Сохраняем выбранную цель
+        self.selectedTarget = feature
+    
+    # ======================================================
+    # Смена системы координат целей
+    # ======================================================
+
     def targetCrsChanged(self, crs):
 
         self.crsOutputTarget = crs
@@ -506,395 +543,4 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
                 self.tableTargets.rowCount()-1, 2
             ).text()
     
-            self.txtTargetNorth.setText(northText)
-            self.txtTargetEast.setText(eastText)
-    #%% ФУНКЦИИ ДЛЯ СОЗДАНИЯ РАБОЧЕГО СЛОЯ
-    #Функции кнопок для создания рабочих слоев
-    
-    # Функционал кнопки добавления слоя позиции
-    def addPositionLayer(self):
-        layer = self.mMapLayerComboBoxPositions.currentLayer()
-    
-        if layer is None:
-            return
-    
-        if layer not in self.positionLayers:
-            self.positionLayers.append(layer)
-            self.listWidgetPositionLayers.addItem(layer.name())
-            
-    # Функционал кнопки удаления слоя позиции
-    def removePositionLayer(self):
-        selected = self.listWidgetPositionLayers.currentRow()
-    
-        if selected >= 0:
-            self.listWidgetPositionLayers.takeItem(selected)
-            del self.positionLayers[selected]
-      
-    # Функционал кнопки Создания рабочего слоя позиций    
-    def createPositionsLayer(self):
-
-        # удалить старый рабочий слой если есть
-        if self.layerPositions:
-            QgsProject.instance().removeMapLayer(self.layerPositions.id())
-            self.layerPositions = None
-    
-        # создать новый слой
-        self.layerPositions = QgsVectorLayer(
-            "Point?crs=EPSG:4284",
-            "Positions_WORK",
-            "memory"
-        )
-        
-        # Добавление атрибутов в новый слой
-        dp = self.layerPositions.dataProvider()
-    
-        fields = QgsFields()
-        fields.append(QgsField("name", QVariant.String))
-        fields.append(QgsField("pos", QVariant.String))
-        fields.append(QgsField("ground", QVariant.String))
-        fields.append(QgsField("rotor", QVariant.String))
-        fields.append(QgsField("tfield", QVariant.String))
-        fields.append(QgsField("oilfield", QVariant.String))
-        fields.append(QgsField("oilfield_name", QVariant.String))
-        fields.append(QgsField("source", QVariant.String))
-        dp.addAttributes(fields)
-        self.layerPositions.updateFields()
-    
-        QgsProject.instance().addMapLayer(self.layerPositions)
-        self.importPositions()
-  
    
-    
-    # Функции рабочего слоя Позиции
-    def getPositionMapping(self, layer):
-        """
-        Определяет тип слоя (ARMM / GeoBD)
-        и возвращает соответствующий mapping из settings.json
-        """
-    
-        plugin_dir = os.path.dirname(__file__)
-        settings_path = os.path.join(
-            plugin_dir,
-            "settings",
-            "settings.json"
-        )
-    
-        with open(settings_path, encoding="utf-8") as f:
-            settings = json.load(f)
-    
-        # проверка что слой существует
-        if layer is None:
-            return None
-
-        # -----------------------------
-        # 1. Определяем тип слоя
-        # -----------------------------
-    
-        fields = layer.fields()
-    
-        # GeoBD признак 
-        if fields.indexOf("license_area") != -1:
-            return settings["WellHead"]["Layers"]["geobd"]
-    
-        # иначе считаем ARMM
-        else:
-            return settings["WellHead"]["Layers"]["armm"]
-            
-   
-    #функция для мапинга с учетом значений none (она сипользуется при маппинге позиций и целей)
-    def getMappedValue(self, feature, mapping, key):
-
-        field = mapping.get(key)
-    
-        if field is None:
-            return ""
-    
-        if field == "none":
-            return ""
-    
-        if feature.fields().indexOf(field) == -1:
-            return ""
-    
-        value = feature[field]
-    
-        if value is None:
-            return ""
-    
-        return str(value)
-    
-    # Заполнение рабочего слоя позиций
-    def importPositions(self):
-
-        if self.layerPositions is None:
-            return
-    
-        dp = self.layerPositions.dataProvider()
-    
-        features_to_add = []
-    
-        for layer in self.positionLayers:
-    
-            mapping = self.getPositionMapping(layer)
-            if mapping is None:
-                continue
-    
-            for feature in layer.getFeatures():
-
-                newFeature = QgsFeature(self.layerPositions.fields())
-                newFeature.setGeometry(feature.geometry())
-            
-            
-                newFeature["name"] = self.getMappedValue(feature, mapping, "name")
-                newFeature["pos"] = self.getMappedValue(feature, mapping, "pos")
-                newFeature["ground"] = self.getMappedValue(feature, mapping, "ground")
-                newFeature["rotor"] = self.getMappedValue(feature, mapping, "rotor")
-                newFeature["tfield"] = self.getMappedValue(feature, mapping, "lic")
-                newFeature["oilfield"] = self.getMappedValue(feature, mapping, "oilfield").split("_")[0]
-                newFeature["oilfield_name"] = self.getMappedValue(feature, mapping, "oilfield_name").strip().title()
-                newFeature["source"] = layer.name()
-            
-                features_to_add.append(newFeature)
-    
-        dp.addFeatures(features_to_add)
-        print("Добавлено:", len(features_to_add))
-        print("В рабочем слое:", self.layerPositions.featureCount())
-    
-        self.layerPositions.updateExtents()
-        self.layerPositions.triggerRepaint()
-            
-    #%% Функции рабочего слоя Цели  
-    # Функционал кнопки добавления слоя цели
-    def addTargetLayer(self):
-        layer = self.mMapLayerComboBoxTargets.currentLayer()
-    
-        if layer is None:
-            return
-    
-        if layer not in self.targetLayers:
-            self.targetLayers.append(layer)
-            self.listWidgetTargetLayers.addItem(layer.name())
-       
-    # Функционал кнопки удаления слоя цели
-    def removeTargetLayer(self):
-        selected = self.listWidgetTargetLayers.currentRow()
-    
-        if selected >= 0:
-            self.listWidgetTargetLayers.takeItem(selected)
-            del self.targetLayers[selected]
-
-    
-       # Функционал кнопки Создания рабочего слоя целей    
-    def createTargetsLayer(self):
-
-        # удалить старый слой если есть
-        if self.layerTargets:
-            QgsProject.instance().removeMapLayer(self.layerTargets.id())
-            self.layerTargets = None
-    
-        # создать новый слой
-        self.layerTargets = QgsVectorLayer(
-            "Point?crs=EPSG:4284",
-            "Targets_WORK",
-            "memory"
-        )
-    
-        dp = self.layerTargets.dataProvider()
-    
-        fields = QgsFields()
-        fields.append(QgsField("tid", QVariant.String))
-        fields.append(QgsField("oilfield", QVariant.String))
-        fields.append(QgsField("source", QVariant.String))
-        fields.append(QgsField("ttvd", QVariant.String))
-    
-        dp.addAttributes(fields)
-        self.layerTargets.updateFields()
-    
-        QgsProject.instance().addMapLayer(self.layerTargets)
-        self.importTargets()              
-        
-
-                 
-    def targetChanged(self, index):
-     
-         if index < 0:
-             return
-     
-         layer = self.mMapLayerComboBoxTarget.currentLayer()
-     
-         if layer is None:
-             return
-     
-         feature_id = self.cmbTarget.currentData()
-     
-         if feature_id is None:
-             return
-     
-         # Получаем объект по его id
-         feature = layer.getFeature(feature_id)
-     
-         # Сохраняем выбранную цель
-         self.selectedTarget = feature
-     
-         # Пока выводим только название (или идентификатор) цели
-         self.txtTargetName.setText(
-             self.cmbTarget.currentText()
-         )            
-    # Заполнение рабочего слоя целей
-    def importTargets(self):
-    
-        if self.layerTargets is None:
-            return
-            
-        plugin_dir = os.path.dirname(__file__)
-        settings_path = os.path.join(
-            plugin_dir,
-            "settings",
-            "settings.json"
-        )
-        
-        with open(settings_path, encoding="utf-8") as f:
-            settings = json.load(f)
-        
-        mapping = settings["Target"]["Layers"]["default"]
-        dp = self.layerTargets.dataProvider()
-    
-        features_to_add = []
-    
-        for layer in self.targetLayers:
-    
-
-            if mapping is None:
-                continue
-    
-            for feature in layer.getFeatures():
-    
-                newFeature = QgsFeature(self.layerTargets.fields())
-                newFeature.setGeometry(feature.geometry())
-                newFeature["tid"] = self.getMappedValue(feature, mapping, "tid")
-                newFeature["oilfield"] = self.getMappedValue(feature, mapping, "oilfield").split("_")[0]
-                newFeature["source"] = layer.name()
-                #newFeature["ttvd"] = self.getMappedValue(feature, mapping, "ttvd")
-                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                # ДОБАВЛЯЕТ РАНДОМНЫЕ ЗНАЧЕНИЯ ТОЛЬКО ДЛЯ РАСЧЕТОВ ТЕСТА ОТКЛОНЕНИЙ ИНКЛИНЛОМЕТРИИ (НУЖНО БУДЕТ УДАЛИТЬ)!!!
-                ttvd = self.getMappedValue(feature, mapping, "ttvd")
-                if str(ttvd).strip() in ("", "NULL", "None"):
-                    ttvd = random.randint(-100, -2000)
-                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                
-                newFeature["ttvd"] = str(ttvd)
-                features_to_add.append(newFeature)
-    
-        dp.addFeatures(features_to_add)
-
-    
-        self.layerTargets.updateExtents()
-        self.layerTargets.triggerRepaint()
-        
-        
-    #%% Рабочий слой месторождений
-    def createOilFieldsLayer(self):
-
-        # удалить старый слой
-        if self.layerOilfields:
-            QgsProject.instance().removeMapLayer(self.layerOilfields.id())
-            self.layerOilfields = None
-    
-        # негеометрический memory-слой
-        self.layerOilfields = QgsVectorLayer(
-            "None",
-            "Oilfields_WORK",
-            "memory"
-        )
-    
-        dp = self.layerOilfields.dataProvider()
-    
-        fields = QgsFields()
-        fields.append(QgsField("oilfield", QVariant.String))
-        fields.append(QgsField("name", QVariant.String))
-    
-        dp.addAttributes(fields)
-        self.layerOilfields.updateFields()
-    
-        QgsProject.instance().addMapLayer(self.layerOilfields)
-    
-        self.importOilfields()
-        
-        
-        
-        
-    def importOilfields(self):
-    
-        if self.layerOilfields is None:
-            return
-    
-    
-        dp = self.layerOilfields.dataProvider()
-    
-        features_to_add = []
-    
-        # словарь для удаления дублей
-        oilfields = {}
-    
-    
-        # ============================
-        # 1. Сначала берем из Positions_WORK
-        # ============================
-    
-        if self.layerPositions is not None:
-    
-            for feature in self.layerPositions.getFeatures():
-    
-                code = str(feature["oilfield"])
-    
-                name = str(feature["oilfield_name"]).upper()
-    
-    
-                if code not in oilfields:
-    
-                    oilfields[code] = name
-    
-    
-    
-        # ============================
-        # 2. Добавляем коды из Targets_WORK,
-        #    если их еще нет
-        # ============================
-    
-        if self.layerTargets is not None:
-    
-            for feature in self.layerTargets.getFeatures():
-    
-                code = str(feature["oilfield"])
-    
-    
-                if code not in oilfields:
-    
-                    oilfields[code] = ""
-    
-    
-    
-        # ============================
-        # Запись в OilFields_WORK
-        # ============================
-    
-        for code, name in oilfields.items():
-    
-            newFeature = QgsFeature(
-                self.layerOilfields.fields()
-            )
-    
-    
-            newFeature["oilfield"] = code
-            newFeature["name"] = name
-    
-    
-            features_to_add.append(newFeature)
-    
-    
-    
-        dp.addFeatures(features_to_add)
-    
-    
-        self.layerOilfields.updateExtents()
-        self.layerOilfields.triggerRepaint()
-        

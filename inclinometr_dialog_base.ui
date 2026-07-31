@@ -32,7 +32,7 @@
       <number>-5</number>
      </property>
      <property name="currentIndex">
-      <number>3</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="Ust">
       <attribute name="title">
@@ -175,18 +175,7 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0">
-          <item>
-           <widget class="QLabel" name="label_9">
-            <property name="text">
-             <string>Слой</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsMapLayerComboBox" name="mMapLayerComboBoxWellHead"/>
-          </item>
-         </layout>
+         <layout class="QHBoxLayout" name="horizontalLayout_3"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2">
@@ -200,7 +189,7 @@
           <item>
            <widget class="QgsProjectionSelectionWidget" name="mQgsProjectionSelectionWidgetWellHead">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -244,18 +233,7 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,2">
-          <item>
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>Слой</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsMapLayerComboBox" name="mMapLayerComboBoxTarget"/>
-          </item>
-         </layout>
+         <layout class="QHBoxLayout" name="horizontalLayout_9"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_11">
@@ -302,23 +280,30 @@
         </rect>
        </property>
        <property name="text">
-        <string>Выбор цели по карте</string>
+        <string>Выбор системы координат</string>
        </property>
       </widget>
       <widget class="QWidget" name="horizontalLayoutWidget_3">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>160</y>
+         <y>240</y>
          <width>421</width>
          <height>31</height>
         </rect>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="0,0">
         <item>
          <widget class="QPushButton" name="btnSelectTarget">
           <property name="text">
            <string>Выбрать на карте</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnRemoveTarget">
+          <property name="text">
+           <string>Удалить цель</string>
           </property>
          </widget>
         </item>
@@ -347,19 +332,19 @@
         </rect>
        </property>
        <property name="text">
-        <string>Выбор системы координат</string>
+        <string>Выбор и удаление целей</string>
        </property>
       </widget>
       <widget class="QWidget" name="horizontalLayoutWidget_4">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>230</y>
+         <y>160</y>
          <width>421</width>
-         <height>31</height>
+         <height>32</height>
         </rect>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_15">
+       <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="2">
         <item>
          <widget class="QgsProjectionSelectionWidget" name="mQgsProjectionSelectionWidgetTarget"/>
         </item>
@@ -382,9 +367,9 @@
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>290</y>
+         <y>291</y>
          <width>411</width>
-         <height>192</height>
+         <height>191</height>
         </rect>
        </property>
        <property name="columnCount">
@@ -741,89 +726,6 @@
        <property name="text">
         <string>Расчет отклонений</string>
        </property>
-      </widget>
-     </widget>
-     <widget class="QWidget" name="tab_3">
-      <attribute name="title">
-       <string>Нужно будет удалить</string>
-      </attribute>
-      <widget class="QWidget" name="verticalLayoutWidget_2">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>20</y>
-         <width>421</width>
-         <height>188</height>
-        </rect>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_5">
-        <item>
-         <widget class="QTextEdit" name="textEdit">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="tabletTracking">
-           <bool>false</bool>
-          </property>
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-          <property name="html">
-           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Информация по цели&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="1,2">
-          <item>
-           <widget class="QLabel" name="label_21">
-            <property name="text">
-             <string>Выбранная цель</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="txtTargetName">
-            <property name="readOnly">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,2">
-          <item>
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>Север</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="txtTargetNorth"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="1,2">
-          <item>
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Восток</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="txtTargetEast"/>
-          </item>
-         </layout>
-        </item>
-       </layout>
       </widget>
      </widget>
     </widget>

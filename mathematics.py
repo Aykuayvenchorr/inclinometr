@@ -1,7 +1,8 @@
-from math import sin, cos, sqrt, atan2, radians, acos, asin, tan, degrees
+from math import atan, sin, cos, sqrt, atan2, radians, acos, asin, tan, degrees
 
 from .excel_reader import ExcelReader
 from qgis.PyQt import QtWidgets
+from qgis.core import QgsPoint
 
 class Mathematics:
 
@@ -40,6 +41,61 @@ class Mathematics:
         self.COL_RESULT_EAST =      3
         self.COL_RESULT_DEVIATION = 4
 
+        self.c = QgsPoint(77, 550, 17)
+        print(f"Point: {self.c.x()}, {self.c.y()}, {self.c.z()}")
+    from math import sin, cos, tan, atan, radians, degrees
+
+
+    def convergence_meridians(lat_deg, lon_deg, lon0_deg, a, b):
+        """
+        Расчет сближения меридианов по формуле Морозова.
+
+        Параметры
+        ----------
+        lat_deg : float
+            Геодезическая широта, градусы.
+
+        lon_deg : float
+            Геодезическая долгота точки, градусы.
+
+        lon0_deg : float
+            Долгота осевого меридиана зоны, градусы.
+
+        a : float
+            Большая полуось эллипсоида, м.
+
+        b : float
+            Малая полуось эллипсоида, м.
+
+        Возвращает
+        ----------
+        float
+            Сближение меридианов, градусы.
+        """
+
+        # Перевод координат в радианы
+        B = radians(lat_deg)
+        L = radians(lon_deg)
+        L0 = radians(lon0_deg)
+
+        # Разность долгот
+        l = L - L0
+
+        # Первый эксцентриситет²
+        #e2 = (a**2 - b**2) / (a**2)
+
+        # Второй эксцентриситет²
+        e2_second = (a**2 - b**2) / (b**2)
+
+        # η²
+        eta2 = e2_second * cos(B) ** 2
+
+        # Формула Морозова
+        tg_gamma = (sin(B) * tan(l) + (eta2 * sin(B) * cos(B)**2 * l**3* (1+ (2/3)*eta2 + cos(B)**2 * l**2)))
+
+        gamma = atan(tg_gamma)
+
+        return degrees(gamma)
     def loadInclinometry(self):
 
         filename = self.excel.open_file()
@@ -199,8 +255,8 @@ class Mathematics:
                 # =====================================================
         
                 dNorth = (dMD / 2) * (sin(I1) * cos(dir1)+ sin(I2) * cos(dir2)) * RF
-                dEast = (dMD / 2) * (sin(I1) * sin(dir1)+ sin(I2) * sin(dir2)) * RF
-                dTVD = (dMD / 2 * (cos(I1) + cos(I2)) * RF )
+                dEast  = (dMD / 2) * (sin(I1) * sin(dir1)+ sin(I2) * sin(dir2)) * RF
+                dTVD   = (dMD / 2  * (cos(I1) + cos(I2)) * RF )
     
             # =====================================================
             # Новые координаты
@@ -209,7 +265,7 @@ class Mathematics:
             north += dNorth
             east += dEast
             tvd += dTVD
-    
+
             # =====================================================
             # Запись строки результата
             # =====================================================
@@ -247,8 +303,9 @@ class Mathematics:
             table.setItem(
                 i,
                 self.COL_INCLIN_DIRECTIONAL,
-                QtWidgets.QTableWidgetItem(f"{dir2:.3f}")
+                QtWidgets.QTableWidgetItem(f"{degrees(dir2):.3f}")
             )
+
         # ==========================================================
         # Вывод результата
         # ==========================================================
@@ -389,3 +446,6 @@ class Mathematics:
                         QtWidgets.QTableWidgetItem(f"{deviation:.3f}")
                     )
                     break
+
+if __name__ == "__main__":
+    gg = Mathematics(None)

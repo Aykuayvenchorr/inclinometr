@@ -17,7 +17,7 @@ import unittest
 from qgis.core import Qgis
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
 
-from inclinometr_dialog import MainInclinometrDialog
+from inclinometr_dialog1 import MainInclinometrDialog
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
