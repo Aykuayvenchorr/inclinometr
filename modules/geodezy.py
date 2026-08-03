@@ -1,5 +1,5 @@
 from math import atan, sin, cos, sqrt, atan2, radians, acos, asin, tan, degrees
-import ppigrf
+from . import ppigrf
 from datetime import date, datetime
 import numpy as np
 
@@ -51,13 +51,13 @@ class Geodezy:
         return gamma
 
     @staticmethod
-    def azimuth_true_2_grid(azimiuth_true: float, convergence_meridians: float) -> float:
+    def azimuth_true_2_grid(azimuth_true: float, convergence_meridians: float) -> float:
         """
-        Расчет дирекционного угла по магнитному азимуту и сближению меридианов
+        Расчет дирекционного угла по истинному азимуту и сближению меридианов
 
         Параметры
         ----------
-        azimiuth_true : float
+        azimuth_true : float
             Истинный азимут, радианы
         convergence_meridians : float
             Сближение меридианов, радианы
@@ -69,18 +69,22 @@ class Geodezy:
         float
             Дирекционный угол, радианы
         """
+        # Дирекционный угол
+        azimuth_grid = azimuth_true + convergence_meridians
 
+        return azimuth_grid
+    
     @staticmethod
-    def magnetic_declination(lat_deg: float, lon_deg: float, alt_m: float, dt: datetime) -> float:
+    def magnetic_declination(lat_rad: float, lon_rad: float, alt_m: float, dt: datetime) -> float:
         """
         Расчет магнитного склонения по модели IGRF.
 
         Параметры
         ----------
-        lat_deg : float
-            Геодезическая широта, градусы
-        lon_deg : float
-            Геодезическая долгота точки, градусы
+        lat_rad : float
+            Геодезическая широта, радианы
+        lon_rad : float
+            Геодезическая долгота точки, радианы
         alt_m : float
             Альтитуда точки, м
         dt : datetime
@@ -91,6 +95,9 @@ class Geodezy:
         float
             Магнитное склонение, радианы
         """
+        # Переводим радианы в градусы для IGRF
+        lat_deg = degrees(lat_rad)
+        lon_deg = degrees(lon_rad)
         # Расчет компонентов напряженности магнитного поля Восток, Север, Нормальное (вверх)
         Be, Bn, Bu = ppigrf.igrf(lon=lon_deg, lat=lat_deg, h=alt_m, date=dt)
 

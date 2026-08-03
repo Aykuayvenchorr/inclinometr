@@ -40,7 +40,7 @@
       </attribute>
       <widget class="QGroupBox" name="grbWellHeadInfo">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="geometry">
         <rect>
@@ -215,6 +215,156 @@
        </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>Загрузка инклинометрии</string>
+      </attribute>
+      <widget class="QPushButton" name="btnLoadInclinometry">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>30</y>
+         <width>401</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Загрузка Эксель файлов</string>
+       </property>
+      </widget>
+      <widget class="QTableWidget" name="tableInclinometry">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>180</y>
+         <width>401</width>
+         <height>301</height>
+        </rect>
+       </property>
+       <property name="columnCount">
+        <number>8</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>Глубина по стволу, м</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Зенитный угол, град</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Азимут GRID, град</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Дирекционный угол</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Дата</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Север</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Восток</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>TVD</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QPushButton" name="btnCalculateInclinometry">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>70</y>
+         <width>401</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Расчет инклинометрии</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="txtConvergenceMeridian">
+       <property name="geometry">
+        <rect>
+         <x>90</x>
+         <y>130</y>
+         <width>113</width>
+         <height>22</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>Расчет отклонений</string>
+      </attribute>
+      <widget class="QTableWidget" name="tableCalculationDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>80</y>
+         <width>381</width>
+         <height>351</height>
+        </rect>
+       </property>
+       <property name="columnCount">
+        <number>5</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>Глубина</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Цель</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Север</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Восток</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>TVD</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QPushButton" name="btnCalculateDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>40</y>
+         <width>381</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Расчет отклонений</string>
        </property>
       </widget>
      </widget>
@@ -540,156 +690,6 @@
        </property>
        <property name="text">
         <string>Создать слой месторождений</string>
-       </property>
-      </widget>
-     </widget>
-     <widget class="QWidget" name="tab_4">
-      <attribute name="title">
-       <string>Загрузка инклинометрии</string>
-      </attribute>
-      <widget class="QPushButton" name="btnLoadInclinometry">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>30</y>
-         <width>401</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Загрузка Эксель файлов</string>
-       </property>
-      </widget>
-      <widget class="QTableWidget" name="tableInclinometry">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>180</y>
-         <width>401</width>
-         <height>301</height>
-        </rect>
-       </property>
-       <property name="columnCount">
-        <number>8</number>
-       </property>
-       <column>
-        <property name="text">
-         <string>Глубина по стволу, м</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Зенитный угол, град</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Азимут GRID, град</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Дирекционный угол</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Дата</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Север</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Восток</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>TVD</string>
-        </property>
-       </column>
-      </widget>
-      <widget class="QPushButton" name="btnCalculateInclinometry">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>70</y>
-         <width>401</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Расчет инклинометрии</string>
-       </property>
-      </widget>
-      <widget class="QLineEdit" name="txtConvergenceMeridian">
-       <property name="geometry">
-        <rect>
-         <x>90</x>
-         <y>130</y>
-         <width>113</width>
-         <height>22</height>
-        </rect>
-       </property>
-      </widget>
-     </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Расчет отклонений</string>
-      </attribute>
-      <widget class="QTableWidget" name="tableCalculationDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>80</y>
-         <width>381</width>
-         <height>351</height>
-        </rect>
-       </property>
-       <property name="columnCount">
-        <number>5</number>
-       </property>
-       <column>
-        <property name="text">
-         <string>Глубина</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Цель</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Север</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Восток</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>TVD</string>
-        </property>
-       </column>
-      </widget>
-      <widget class="QPushButton" name="btnCalculateDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>40</y>
-         <width>381</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Расчет отклонений</string>
        </property>
       </widget>
      </widget>

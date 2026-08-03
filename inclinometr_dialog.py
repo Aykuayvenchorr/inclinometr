@@ -51,7 +51,8 @@ from PyQt5.QtCore import QVariant
 from .mathematics import Mathematics
 from .excel_reader import ExcelReader
 from .layer_manager import LayerManager
-
+from .modules.geodezy import Geodezy
+from .modules.inclinometry import Inclinometry
 # ==========================================================
 # Загрузка интерфейса Qt Designer
 # ==========================================================
@@ -90,7 +91,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # %% Вкладка --- Устье ---
 
-        
+        self.tabWidget.name = "tabWidget"
         # Инструмент выбора
         self.wellHeadIdentifyTool = None
         # Здесь будет храниться выбранное устье
@@ -188,7 +189,8 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnCalculateDeviation.clicked.connect(
             self.math.calculationDeviation
         )
-
+        self.geodezy = Geodezy()
+        self.inclinometry = Inclinometry()
     # ======================================================
     # Вкладка "Устье"
     # ======================================================
@@ -357,7 +359,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         # Сохраняем выбранную цель
         self.selectedTargets.append(feature)
     
-
         # Определяем СК слоя
         crs = self.layerTarget.crs()
     
@@ -367,8 +368,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mQgsProjectionSelectionWidgetTarget.blockSignals(True)
         self.mQgsProjectionSelectionWidgetTarget.setCrs(crs)
         self.mQgsProjectionSelectionWidgetTarget.blockSignals(False)
-    
-
     
         iface.mapCanvas().unsetMapTool(
             self.targetIdentifyTool
@@ -454,3 +453,4 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             eastText = self.tableTargets.item(
                 self.tableTargets.rowCount()-1, 2
             ).text()
+
