@@ -220,7 +220,7 @@
      </widget>
      <widget class="QWidget" name="tab_4">
       <attribute name="title">
-       <string>Загрузка инклинометрии</string>
+       <string>Инклинометрия</string>
       </attribute>
       <widget class="QPushButton" name="btnLoadInclinometry">
        <property name="geometry">
@@ -231,8 +231,11 @@
          <height>28</height>
         </rect>
        </property>
+       <property name="toolTip">
+        <string comment="Excel формата: MD, Зенит, Азимут"/>
+       </property>
        <property name="text">
-        <string>Загрузка Эксель файлов</string>
+        <string>Загрузка инклинометрии (из Excel: MD, Зенит, Азимут)</string>
        </property>
       </widget>
       <widget class="QTableWidget" name="tableInclinometry">
@@ -312,65 +315,9 @@
        </property>
       </widget>
      </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Расчет отклонений</string>
-      </attribute>
-      <widget class="QTableWidget" name="tableCalculationDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>80</y>
-         <width>381</width>
-         <height>351</height>
-        </rect>
-       </property>
-       <property name="columnCount">
-        <number>5</number>
-       </property>
-       <column>
-        <property name="text">
-         <string>Глубина</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Цель</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Север</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Восток</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>TVD</string>
-        </property>
-       </column>
-      </widget>
-      <widget class="QPushButton" name="btnCalculateDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>40</y>
-         <width>381</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Расчет отклонений</string>
-       </property>
-      </widget>
-     </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
-       <string>Цель</string>
+       <string>Цели</string>
       </attribute>
       <widget class="Line" name="line_2">
        <property name="geometry">
@@ -690,6 +637,62 @@
        </property>
        <property name="text">
         <string>Создать слой месторождений</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>Расчет отклонений</string>
+      </attribute>
+      <widget class="QTableWidget" name="tableCalculationDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>80</y>
+         <width>381</width>
+         <height>351</height>
+        </rect>
+       </property>
+       <property name="columnCount">
+        <number>5</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>Глубина</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Цель</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Север</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Восток</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>TVD</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QPushButton" name="btnCalculateDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>40</y>
+         <width>381</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Расчет отклонений</string>
        </property>
       </widget>
      </widget>

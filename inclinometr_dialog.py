@@ -51,8 +51,13 @@ from PyQt5.QtCore import QVariant
 from .mathematics import Mathematics
 from .excel_reader import ExcelReader
 from .layer_manager import LayerManager
+
 from .modules.geodezy import Geodezy
 from .modules.inclinometry import Inclinometry
+
+from .ui.tabWellhead import TabWellhead
+from .ui.tabInclinometry import TabInclinometry
+
 # ==========================================================
 # Загрузка интерфейса Qt Designer
 # ==========================================================
@@ -89,9 +94,19 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.layerManager = LayerManager(self)
 
-        # %% Вкладка --- Устье ---
+        # =====================================================
+        # Загрузка плагина
+        # =====================================================
 
-        self.tabWidget.name = "tabWidget"
+        # Вкладки:
+        # 0 - "Позиция": Активная вкладка при запуске плагина
+        # 1 - "Инклинометрия": Не активная вкладка до выбора позиции (устья)
+        # 2 - "Цели": Не активная вкладка до расчета инклинометрии
+        self.tabWidget.setTabEnabled(1, False)
+        self.tabWidget.setTabEnabled(2, False)
+        # self.tabWidget.setTabEnabled(3, False)
+        self.tabWidget.setCurrentIndex(0)
+
         # Инструмент выбора
         self.wellHeadIdentifyTool = None
         # Здесь будет храниться выбранное устье
@@ -100,18 +115,32 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.selectedWellHead = None
         # Система координат слоя
         self.crsLayerWellHead = None
+
         # Выбранная система координат
         self.crsOutputWellHead = None
+
+        # =====================================================
+        # Вкладка: Позиция / Устье
+        # =====================================================
+
+        self.tabWellhead = TabWellhead(self)    
+        # Подключаем сигнал на кнопку выбора позиции / устья
+        self.btnSelectWellHead.clicked.connect( self.tabWellhead.selectWellHead )
+        # Подключаем сигнал на кнопку смены системы координат
+        self.mQgsProjectionSelectionWidgetWellHead.crsChanged.connect( self.tabWellhead.wellHeadCrsChanged )
+        # Текущая система координат для расчетов
+        self.crsOutputWellHead = self.tabWellhead.getCurrentCrs()
+
+        # =====================================================
+        # Вкладка: Инклинометрия
+        # =====================================================
+
+        self.tabInclinometry = TabInclinometry(self)
+
+
+
         
 
-        # Подключаем кнопку
-        self.btnSelectWellHead.clicked.connect(
-            self.selectWellHead
-        )
-
-        self.mQgsProjectionSelectionWidgetWellHead.crsChanged.connect(
-            self.wellHeadCrsChanged
-        )
         self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
             self.targetCrsChanged
         )
@@ -191,15 +220,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         )
         self.geodezy = Geodezy()
         self.inclinometry = Inclinometry()
-    # ======================================================
-    # Вкладка "Устье"
-    # ======================================================
-
-
-    def selectWellHead(self):
-        self.selectFeature(
-            self.wellHeadSelected
-        )
 
 
     def selectFeature(self, callback):
@@ -229,95 +249,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         iface.mapCanvas().setMapTool(
             self.wellHeadIdentifyTool
         )
-
-
-    def wellHeadSelected(self, feature):
-        # Сохраняем выбранный объект
-        self.selectedWellHead = feature
-        
-        plugin_dir = os.path.dirname(__file__)
-        settings_path = os.path.join(
-            plugin_dir,
-            "settings",
-            "settings.json"
-        )
-        
-        with open(settings_path, encoding="utf-8") as f:
-            settings = json.load(f)
-            
-    
-            # QMessageBox.information(self, "Слой", "Это устья ГеоБД")
-            self.txtWellHeadName.setText(
-                str(feature[settings["WellHead"]["Layers"]["Position_WORK"]["name"]])
-            )
-            self.txtWellHeadGround.setText("")
-            self.txtWellHeadRotor.setText(
-                str(feature[settings["WellHead"]["Layers"]["Position_WORK"]["rotor"]])
-            )
-            self.txtWellHeadLicense.setText(
-                str(feature[settings["WellHead"]["Layers"]["Position_WORK"]["lic"]])
-            )
-
-            north = feature.geometry().asPoint().y()
-            east = feature.geometry().asPoint().x()
-            
-            crs_l = self.layerWellHead.crs()
-            crs_t = self.crsOutputWellHead
-            
-            # Создаем преобразование координат
-            transform = QgsCoordinateTransform(crs_l, crs_t, QgsProject.instance())
-            
-            # Исходная точка
-            sourcePoint = QgsPointXY(east, north)
-    
-            # Пересчет
-            targetPoint = transform.transform(sourcePoint)
-            
-            if self.crsOutputWellHead.isGeographic():
-                self.txtWellHeadNorth.setText(f"{targetPoint.y():.10f}")
-                self.txtWellHeadEast.setText(f"{targetPoint.x():.10f}")
-            else:
-                self.txtWellHeadNorth.setText(f"{targetPoint.y():.3f}")
-                self.txtWellHeadEast.setText(f"{targetPoint.x():.3f}")
-            
-        # Выключаем инструмент выбора
-        iface.mapCanvas().unsetMapTool(
-            self.wellHeadIdentifyTool
-        )
-
-
-    # ======================================================
-    # Смена системы координат устья
-    # ======================================================
-
-    def wellHeadCrsChanged(self, crs):
-        
-        self.crsLayerWellHead = self.crsOutputWellHead
-        self.crsOutputWellHead = crs
-        
-        if self.txtWellHeadNorth.text() != '' and self.txtWellHeadEast.text() != '':
-            north = float(self.txtWellHeadNorth.text())
-            east = float(self.txtWellHeadEast.text())
-            
-            # Создаем преобразование координат
-            transform = QgsCoordinateTransform(
-                self.crsLayerWellHead,
-                self.crsOutputWellHead,
-                QgsProject.instance()
-            )
-            
-            # Исходная точка
-            sourcePoint = QgsPointXY(east, north)
-    
-            # Пересчет
-            targetPoint = transform.transform(sourcePoint)
-            
-            if self.crsOutputWellHead.isGeographic():
-                self.txtWellHeadNorth.setText(f"{targetPoint.y():.10f}")
-                self.txtWellHeadEast.setText(f"{targetPoint.x():.10f}")
-            else:
-                self.txtWellHeadNorth.setText(f"{targetPoint.y():.3f}")
-                self.txtWellHeadEast.setText(f"{targetPoint.x():.3f}")
 
     # ======================================================
     # Вкладка "Цели"
