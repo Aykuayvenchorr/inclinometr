@@ -28,7 +28,12 @@ class Inclinometry:
         (dNorth: float, dEast: float, dZ: float)
             Кортеж приращений координат Север, Восток, Глубина
         """
-
+        # Ошибка при переходе через 0 градусов
+        # if abs(azimuth_grid_end - azimuth_grid_start) > 3.14159:
+        #     if azimuth_grid_start > azimuth_grid_end:
+        #         azimuth_grid_end += 2 * 3.14159
+        #     else:
+        #         azimuth_grid_start += 2 * 3.14159
         dNorth = dl * sin((zenith_start + zenith_end) / 2.0) * cos((azimuth_grid_start + azimuth_grid_end) / 2.0)
         dEast  = dl * sin((zenith_start + zenith_end) / 2.0) * sin((azimuth_grid_start + azimuth_grid_end) / 2.0)
         dZ     = dl * cos((zenith_start + zenith_end) / 2.0)

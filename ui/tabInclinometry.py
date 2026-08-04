@@ -1,8 +1,11 @@
 import os
 import json
+from datetime import datetime
 
+from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
     QgsMapLayerProxyModel,
     QgsCoordinateTransform,
     QgsProject,
@@ -15,8 +18,213 @@ from qgis.core import (
 from qgis.utils import iface
 from qgis.gui import QgsMapToolIdentifyFeature
 
+from ..modules.excel_reader import ExcelReader
+from ..modules.geodezy import Geodezy
+from ..modules.inclinometry import Inclinometry
+
 class TabInclinometry:
     """Вкладка 'Инклинометрия'"""
 
     def __init__(self, dialog):
         self.tab = dialog
+        self.north_p = 0.0
+        self.east_p = 0.0
+        self.north_g = 0.0
+        self.east_g = 0.0
+        self.alt = 0.0
+        self.gamma = 0.0
+        self.rows = 0
+        self.inclinometry = Inclinometry()
+
+        # Загрузка инклинометрии из Excel
+        self.excel = ExcelReader()
+        self.tab.btnLoadInclinometry.clicked.connect(self.load_inclinometry)
+
+        # Настройка выпадающего списка выбора типа азимута
+        self.tab.cmbAzimuthType.addItems([
+                "Магнитный",
+                "Истинный",
+                "Дирекционный угол"
+            ])
+        
+        # По умолчанию магнитный
+        self.tab.cmbAzimuthType.setCurrentIndex(0)
+        self.AzimuthType = self.tab.cmbAzimuthType.currentIndex()
+        # Переключение типа азимута
+        self.tab.cmbAzimuthType.currentIndexChanged.connect(self.onAzimuthTypeChanged)
+        # Кнопка расчета инклинометрии
+        self.tab.btnCalculateInclinometry.clicked.connect(self.calculateInclinometry)
+
+
+    def load_inclinometry(self):
+        """Загрузка данных инклинометрии из Excel"""
+
+        # Открытие диалога выбора файла
+        filename = self.excel.open_file()
+        if not filename:
+            return
+
+        # Чтение данных из Excel
+        self.excel.read_inclinometry(filename)
+
+        # Отображение данных в таблице
+        self.tab.tableInclinometry.setRowCount(len(self.excel.data))
+        self.crs = self.tab.mQgsProjectionSelectionWidgetWellHead.crs()
+        
+        # Цикл чтения данных из Excel и заполнения таблицы
+        for row, item in enumerate(self.excel.data):
+            self.tab.tableInclinometry.setItem(row, 0, QtWidgets.QTableWidgetItem(str(item["depth"])))
+            self.tab.tableInclinometry.setItem(row, 1, QtWidgets.QTableWidgetItem(str(item["zenith"])))
+            self.tab.tableInclinometry.setItem(row, 2, QtWidgets.QTableWidgetItem(str(item["azimuth"])))
+            self.rows = row + 1
+            if row == 0:
+                self.tab.tableInclinometry.setItem(row, 3, QtWidgets.QTableWidgetItem(str(datetime.now().strftime("%Y-%m-%d"))))
+                self.tab.tableInclinometry.setItem(row, 4, QtWidgets.QTableWidgetItem(self.tab.txtWellHeadNorth.text()))
+                self.north_p = float(self.tab.txtWellHeadNorth.text())
+                self.tab.tableInclinometry.setItem(row, 5, QtWidgets.QTableWidgetItem(self.tab.txtWellHeadEast.text()))
+                self.east_p = float(self.tab.txtWellHeadEast.text())
+                self.tab.tableInclinometry.setItem(row, 6, QtWidgets.QTableWidgetItem(self.tab.txtWellHeadRotor.text()))
+                self.alt = float(self.tab.txtWellHeadRotor.text())
+
+
+            # # Исходная точка
+            # sourcePoint = QgsPointXY(self.east_p, self.north_p)
+            # # Пересчет
+            # geographicPoint = self.transform.transform(sourcePoint)
+            # if self.AzimuthType == 0:  # Магнитный                    
+            #     self.gamma = Geodezy.convergence_meridians(
+            #         Geodezy.deg2rad(geographicPoint.y()),
+            #         Geodezy.deg2rad(geographicPoint.x()),
+            #         Geodezy.getZoneNumberFromEast(self.east_p)
+            #     )
+            # self.tab.tableInclinometry.setItem(row, 7, QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(self.gamma))))
+
+
+    # Меняет переменную AzimuthType в зависимости от выбранного типа азимута в выпадающем списке
+    def onAzimuthTypeChanged(self, index):
+        self.AzimuthType = index
+
+    def getPointPulkovo42(self, north: float, east: float) -> QgsPointXY:
+        """
+        Получение точки в системе координат Pulkovo 1942 по координатам в текущей системе координат
+
+        Параметры
+        ----------
+        north : float
+            Координата Север, м
+        east : float
+            Координата Восток, м
+        
+        Возвращает
+        ----------
+        QgsPointXY
+            Точка в системе координат Pulkovo 1942
+        """
+        targetCrs = QgsCoordinateReferenceSystem("EPSG:4284") # Pulkovo 1942
+        transform = QgsCoordinateTransform(
+            self.crs,
+            targetCrs,
+            QgsProject.instance()
+        )
+        # Исходная точка
+        sourcePoint = QgsPointXY(east, north)
+        # Пересчет
+        geographicPoint = transform.transform(sourcePoint)
+        return geographicPoint
+
+    def getPointWGS84(self, north: float, east: float) -> QgsPointXY:
+        """
+        Получение точки в системе координат WGS 84 по координатам в текущей системе координат
+
+        Параметры
+        ----------
+        north : float
+            Координата Север, м
+        east : float
+            Координата Восток, м
+        
+        Возвращает
+        ----------
+        QgsPointXY
+            Точка в системе координат WGS 84
+        """
+        targetCrs = QgsCoordinateReferenceSystem("EPSG:4326") # WGS 84
+        transform = QgsCoordinateTransform(
+            self.crs,
+            targetCrs,
+            QgsProject.instance()
+        )
+        # Исходная точка
+        sourcePoint = QgsPointXY(east, north)
+        # Пересчет
+        geographicPoint = transform.transform(sourcePoint)
+        return geographicPoint
+
+    def calculateInclinometry(self):
+        # Актуальная дата для расчета магнитного склонения
+        dt: datetime = datetime.now()
+        magnetic_declination: float = 0.0
+        gamma: float = 0.0
+        north_p: float = float(self.tab.tableInclinometry.item(0, 4).text())
+        east_p: float = float(self.tab.tableInclinometry.item(0, 5).text())
+        alt: float = float(self.tab.tableInclinometry.item(0, 6).text())
+
+        depth_prev: float = 0.0
+        zenith_prev: float = 0.0
+        azimuth_grid_prev: float = 0.0
+
+        for i in range(self.rows):
+            depth = float(self.tab.tableInclinometry.item(i, 0).text())
+            zenith = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, 1).text()))
+            azimuth = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, 2).text()))
+            if self.tab.tableInclinometry.item(0, 3).text() != "":
+                dt = datetime.strptime(self.tab.tableInclinometry.item(0, 3).text(), "%Y-%m-%d")
+
+            # Магнитное склонение
+            if self.AzimuthType < 1:
+                pointWGS84 = self.getPointWGS84(north_p, east_p)
+                magnetic_declination = Geodezy.magnetic_declination(
+                    Geodezy.deg2rad(pointWGS84.y()),
+                    Geodezy.deg2rad(pointWGS84.x()),
+                    alt,
+                    dt
+                )[0]
+            self.tab.tableInclinometry.setItem(i, 8, QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(magnetic_declination))))
+
+            # Сближение меридианов
+            if self.AzimuthType < 2:
+                pointPulkovo42 = self.getPointPulkovo42(north_p, east_p)
+                gamma = Geodezy.convergence_meridians(
+                    Geodezy.deg2rad(pointPulkovo42.y()),
+                    Geodezy.deg2rad(pointPulkovo42.x()),
+                    Geodezy.getZoneNumberFromEast(east_p)
+                )
+            self.tab.tableInclinometry.setItem(i, 7, QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(gamma))))
+
+            # Дирекционный угол
+            azimuth_grid = azimuth + magnetic_declination + gamma
+            self.tab.tableInclinometry.setItem(i, 9, QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid))))
+
+            # РАСЧЕТ
+            if i > 0:
+                dl = depth - depth_prev
+                dNorth, dEast, dZ = self.inclinometry.inclinometry_step(
+                    dl,
+                    azimuth_grid_prev,
+                    azimuth_grid,
+                    zenith_prev,
+                    zenith
+                )
+                self.tab.tableInclinometry.setItem(i, 10, QtWidgets.QTableWidgetItem(str(dNorth)))
+                self.tab.tableInclinometry.setItem(i, 11, QtWidgets.QTableWidgetItem(str(dEast)))
+                self.tab.tableInclinometry.setItem(i, 12, QtWidgets.QTableWidgetItem(str(dZ)))
+                north_p += dNorth
+                east_p += dEast
+                alt -= dZ
+                self.tab.tableInclinometry.setItem(i, 4, QtWidgets.QTableWidgetItem(str(north_p)))
+                self.tab.tableInclinometry.setItem(i, 5, QtWidgets.QTableWidgetItem(str(east_p)))
+                self.tab.tableInclinometry.setItem(i, 6, QtWidgets.QTableWidgetItem(str(alt)))
+
+                depth_prev = depth
+                zenith_prev = zenith
+                azimuth_grid_prev = azimuth_grid

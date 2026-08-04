@@ -49,7 +49,6 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 
 from .mathematics import Mathematics
-from .excel_reader import ExcelReader
 from .layer_manager import LayerManager
 
 from .modules.geodezy import Geodezy
@@ -139,7 +138,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
 
 
-        
 
         self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
             self.targetCrsChanged
@@ -203,23 +201,21 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         
         
         self.selectedTargets = []
-        
-        self.excel = ExcelReader(self)
- 
 
-        self.btnLoadInclinometry.clicked.connect(
-            self.math.loadInclinometry
-        )
+        # ПРИЧИНА ДВОЙНОГО ВЫЗОВА ПРОВОДНИКА
+        # self.btnLoadInclinometry.clicked.connect(
+        #     self.math.loadInclinometry
+        # )
 
 
-        self.btnCalculateInclinometry.clicked.connect(
-            self.math.calculateInclinometry
-        )
-        self.btnCalculateDeviation.clicked.connect(
-            self.math.calculationDeviation
-        )
-        self.geodezy = Geodezy()
-        self.inclinometry = Inclinometry()
+        # self.btnCalculateInclinometry.clicked.connect(
+        #     self.math.calculateInclinometry
+        # )
+        # self.btnCalculateDeviation.clicked.connect(
+        #     self.math.calculationDeviation
+        # )
+        # self.geodezy = Geodezy()
+        # self.inclinometry = Inclinometry()
 
 
     def selectFeature(self, callback):

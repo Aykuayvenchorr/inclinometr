@@ -96,6 +96,7 @@ class Mathematics:
         gamma = atan(tg_gamma)
 
         return degrees(gamma)
+    
     def loadInclinometry(self):
 
         filename = self.excel.open_file()

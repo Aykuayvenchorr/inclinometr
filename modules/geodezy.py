@@ -12,7 +12,84 @@ class Geodezy:
         pass
 
     @staticmethod
-    def convergence_meridians(B: float, L: float, L0: float, a: float, b: float):
+    def getPulkovo1942EllipsoidParameters():
+        """
+        Возвращает параметры эллипсоида Пулково 1942
+
+        Returns
+        -------
+        a : float
+            Большая полуось эллипсоида, м
+        b : float
+            Малая полуось эллипсоида, м
+        """
+        a = 6378245.0  # Большая полуось эллипсоида, м
+        b = 6356863.0188  # Малая полуось эллипсоида, м
+        return a, b
+
+    @staticmethod
+    def getCentralMeridian(zone_number: int) -> float:
+        """
+        Возвращает долготу осевого меридиана зоны в радианах
+
+        Parameters
+        ----------
+        zone_number : int
+            Номер зоны (1-60)
+
+        Returns
+        -------
+        float
+            Долгота осевого меридиана зоны, радианы
+        """
+        if zone_number < 1 or zone_number > 60:
+            raise ValueError("Номер зоны должен быть в диапазоне от 1 до 60.")
+        
+        # Долгота осевого меридиана зоны в градусах
+        lon0_deg = (zone_number * 6) - 3
+        # Переводим в радианы
+        lon0_rad = radians(lon0_deg)
+
+        return lon0_rad
+
+    @staticmethod
+    def getZoneNumberFromEast(east: float) -> int:
+        """
+        Возвращает номер зоны по прямоугольной координате восток (метры) с зоной
+
+        Parameters
+        ----------
+        east : float
+            Восточная координата точки с зоной, метры
+
+        Returns
+        -------
+        int
+            Номер зоны (1-60)
+        """
+        zone_number = int(east // 1000000)
+        return zone_number
+
+    @staticmethod
+    def getZoneNumberFromLongitude(longitude: float) -> int:
+        """
+        Возвращает номер зоны по географической долготе (градусы)
+
+        Parameters
+        ----------
+        longitude : float
+            Географическая долгота точки, градусы
+
+        Returns
+        -------
+        int
+            Номер зоны (1-60)
+        """
+        zone_number = int((longitude + 180) // 6) + 1
+        return zone_number
+
+    @staticmethod
+    def convergence_meridians(B: float, L: float, zone: int) -> float:
         """
         Расчет сближения меридианов по формуле Морозова.
 
@@ -22,18 +99,17 @@ class Geodezy:
             Геодезическая широта, радианы    
         L : float
             Геодезическая долгота точки, радианы    
-        L0 : float
-            Долгота осевого меридиана зоны, радианы    
-        a : float
-            Большая полуось эллипсоида, м    
-        b : float
-            Малая полуось эллипсоида, м
-            
+        zone : int
+            Номер зоны (1-60)
+
         Возвращает
         ----------
         float
             Сближение меридианов, радианы
         """
+        a, b = Geodezy.getPulkovo1942EllipsoidParameters()
+        L0 = Geodezy.getCentralMeridian(zone)
+
         # Разность долгот
         l = L - L0
 
@@ -47,7 +123,6 @@ class Geodezy:
         # Формула Морозова
         tg_gamma = (sin(B) * tan(l) + (eta2 * sin(B) * cos(B)**2 * l**3* (1 + (2/3)*eta2 + cos(B)**2 * l**2)))
         gamma = atan(tg_gamma)
-
         return gamma
 
     @staticmethod
@@ -121,3 +196,37 @@ class Geodezy:
         change_per_year = declination_deg_old - declination_deg
         
         return declination_rad
+
+    @staticmethod
+    def rad2deg(rad: float) -> float:
+        """
+        Перевод радиан в градусы
+
+        Parameters
+        ----------
+        rad : float
+            Угол в радианах
+
+        Returns
+        -------
+        float
+            Угол в градусах
+        """
+        return degrees(rad)
+
+    @staticmethod
+    def deg2rad(deg: float) -> float:
+        """
+        Перевод градусов в радианы
+
+        Parameters
+        ----------
+        deg : float
+            Угол в градусах
+
+        Returns
+        -------
+        float
+            Угол в радианах
+        """
+        return radians(deg)
