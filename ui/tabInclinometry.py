@@ -56,7 +56,7 @@ class TabInclinometry:
         # Переключение типа азимута
         self.tab.cmbAzimuthType.currentIndexChanged.connect(self.onAzimuthTypeChanged)
         # Кнопка расчета инклинометрии
-        self.tab.btnCalculateInclinometry.clicked.connect(self.calculateInclinometry)
+        self.tab.btnCalculateInclinometry.clicked.connect(self.calculateInclinometryAndDeviation)
 
     
 
@@ -164,7 +164,17 @@ class TabInclinometry:
         geographicPoint = transform.transform(sourcePoint)
         return geographicPoint
 
-    def calculateInclinometry(self):
+    def calculateInclinometry(
+            self,
+            zenith_error,
+            magnetic_azimuth_error,
+            azimuth_error,
+            north_col,
+            east_col,
+            alt_col,
+            switch # если 1 - будет выводить в таблицу промежуточные результаты и координаты (основная траектория)
+                   # если 0 - будет выводить в таблицу только координаты (крайние траектории)
+    ):
         # Актуальная дата для расчета магнитного склонения
         dt: datetime = datetime.now()
         magnetic_declination: float = 0.0
@@ -179,8 +189,8 @@ class TabInclinometry:
 
         for i in range(self.rows):
             depth = float(self.tab.tableInclinometry.item(i, IncCol["DEPTH"]).text())
-            zenith = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["ZENITH"]).text()))
-            azimuth = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["AZIMUTH"]).text()))
+            zenith = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["ZENITH"]).text())) + zenith_error
+            azimuth = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["AZIMUTH"]).text())) 
             if self.tab.tableInclinometry.item(0, IncCol["DATE"]).text() != "":
                 dt = datetime.strptime(self.tab.tableInclinometry.item(0, IncCol["DATE"]).text(), "%Y-%m-%d")
 
@@ -193,7 +203,7 @@ class TabInclinometry:
                     alt,
                     dt
                 )[0]
-            self.tab.tableInclinometry.setItem(i, IncCol["DECLINATION"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(magnetic_declination))))
+            
 
             # Сближение меридианов
             if self.AzimuthType < 2:
@@ -203,11 +213,11 @@ class TabInclinometry:
                     Geodezy.deg2rad(pointPulkovo42.x()),
                     Geodezy.getZoneNumberFromEast(east_p)
                 )
-            self.tab.tableInclinometry.setItem(i, IncCol["CONVERGENCE"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(gamma))))
+            
 
             # Дирекционный угол
-            azimuth_grid = azimuth + magnetic_declination + gamma
-            self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid))))
+            azimuth_grid = azimuth + magnetic_declination + gamma + azimuth_error + magnetic_azimuth_error
+            
 
             # РАСЧЕТ
             if i > 0:
@@ -219,16 +229,74 @@ class TabInclinometry:
                     zenith_prev,
                     zenith
                 )
-                self.tab.tableInclinometry.setItem(i, IncCol["DELTA_NORTH"], QtWidgets.QTableWidgetItem(str(dNorth)))
-                self.tab.tableInclinometry.setItem(i, IncCol["DELTA_EAST"], QtWidgets.QTableWidgetItem(str(dEast)))
-                self.tab.tableInclinometry.setItem(i, IncCol["DELTA_Z"], QtWidgets.QTableWidgetItem(str(dZ)))
+                if switch == 1:
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_NORTH"], QtWidgets.QTableWidgetItem(str(dNorth)))
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_EAST"], QtWidgets.QTableWidgetItem(str(dEast)))
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_Z"], QtWidgets.QTableWidgetItem(str(dZ)))
                 north_p += dNorth
                 east_p += dEast
                 alt -= dZ
-                self.tab.tableInclinometry.setItem(i, IncCol["NORTH"], QtWidgets.QTableWidgetItem(str(north_p)))
-                self.tab.tableInclinometry.setItem(i, IncCol["EAST"], QtWidgets.QTableWidgetItem(str(east_p)))
-                self.tab.tableInclinometry.setItem(i, IncCol["ALTITUDE"], QtWidgets.QTableWidgetItem(str(alt)))
+                self.tab.tableInclinometry.setItem(i, north_col, QtWidgets.QTableWidgetItem(str(north_p)))
+                self.tab.tableInclinometry.setItem(i, east_col, QtWidgets.QTableWidgetItem(str(east_p)))
+                self.tab.tableInclinometry.setItem(i, alt_col, QtWidgets.QTableWidgetItem(str(alt)))
 
                 depth_prev = depth
                 zenith_prev = zenith
                 azimuth_grid_prev = azimuth_grid
+
+            #Вывод промежуточных результатов в таблицу
+            if switch == 1:
+                self.tab.tableInclinometry.setItem(i, IncCol["DECLINATION"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(magnetic_declination))))
+                self.tab.tableInclinometry.setItem(i, IncCol["CONVERGENCE"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(gamma))))
+                self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid))))
+
+    def calculateInclinometryAndDeviation(self):
+        self.calculateInclinometry(
+            zenith_error=0.0,
+            magnetic_azimuth_error=0.0,
+            azimuth_error=0.0,
+            north_col=IncCol["NORTH"],
+            east_col=IncCol["EAST"],
+            alt_col=IncCol["ALTITUDE"],
+            switch=1
+        )
+        # Верхняя траектория с учетом погрешностей
+        self.calculateInclinometry(
+            zenith_error = Geodezy.deg2rad(float(self.tab.txtErrZenith.text())),
+            magnetic_azimuth_error= 0,
+            azimuth_error= 0,
+            north_col=IncCol["NORTH_TOP"],
+            east_col=IncCol["EAST_TOP"],
+            alt_col=IncCol["ALTITUDE_TOP"],
+            switch=0
+        )
+        # левая траектория с учетом погрешностей
+        self.calculateInclinometry(
+            zenith_error = 0,
+            magnetic_azimuth_error= - Geodezy.deg2rad(float(self.tab.txtErrMagneticAzimuth.text())),
+            azimuth_error= - Geodezy.deg2rad(float(self.tab.txtErrAzimuth.text())),
+            north_col=IncCol["NORTH_LEFT"],
+            east_col=IncCol["EAST_LEFT"],
+            alt_col=IncCol["ALTITUDE_LEFT"],
+            switch=0
+        )
+        # нижняя траектория с учетом погрешностей
+        self.calculateInclinometry(
+            zenith_error = - Geodezy.deg2rad(float(self.tab.txtErrZenith.text())),
+            magnetic_azimuth_error= 0,
+            azimuth_error= 0,
+            north_col=IncCol["NORTH_BOTTOM"],
+            east_col=IncCol["EAST_BOTTOM"],
+            alt_col=IncCol["ALTITUDE_BOTTOM"],
+            switch=0
+        )
+        # правая траектория с учетом погрешностей
+        self.calculateInclinometry(
+            zenith_error = 0,
+            magnetic_azimuth_error= Geodezy.deg2rad(float(self.tab.txtErrMagneticAzimuth.text())),
+            azimuth_error= Geodezy.deg2rad(float(self.tab.txtErrAzimuth.text())),
+            north_col=IncCol["NORTH_RIGHT"],
+            east_col=IncCol["EAST_RIGHT"],
+            alt_col=IncCol["ALTITUDE_RIGHT"],
+            switch=0
+        )

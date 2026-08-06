@@ -17,6 +17,18 @@ class TableColumns:
         "DELTA_NORTH": 10,
         "DELTA_EAST": 11,
         "DELTA_Z": 12,
+        "NORTH_TOP": 13,
+        "EAST_TOP": 14,
+        "ALTITUDE_TOP": 15,
+        "NORTH_LEFT": 16,
+        "EAST_LEFT": 17,
+        "ALTITUDE_LEFT": 18,
+        "NORTH_BOTTOM": 19,
+        "EAST_BOTTOM": 20,
+        "ALTITUDE_BOTTOM": 21,
+        "NORTH_RIGHT": 22,
+        "EAST_RIGHT": 23,
+        "ALTITUDE_RIGHT": 24
     }
 
     targets = {
