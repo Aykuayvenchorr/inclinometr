@@ -43,17 +43,17 @@ class ExcelReader:
 
         while True:
 
-            depth = sheet[f"A{row}"].value
+            md = sheet[f"A{row}"].value
 
             # дошли до конца таблицы
-            if depth is None:
+            if md is None:
                 break
 
             zenith = sheet[f"B{row}"].value
             azimuth = sheet[f"D{row}"].value
 
             self.data.append({
-                "depth": float(depth),
+                "md": float(md),
                 "zenith": float(zenith),
                 "azimuth": float(azimuth)
             })
@@ -62,12 +62,7 @@ class ExcelReader:
 
         workbook.close()
 
-        for row in self.data:
-            print(
-                f"{row['depth']:.2f}\t"
-                f"{row['zenith']:.2f}\t"
-                f"{row['azimuth']:.2f}"
-            )
+
         return self.data
     
     
@@ -81,7 +76,7 @@ class ExcelReader:
     #             row,
     #             0,
     #             QtWidgets.QTableWidgetItem(
-    #                 f"{row_data['depth']:.2f}"
+    #                 f"{row_data['md']:.2f}"
     #             )
     #         )
     #         table.setItem(

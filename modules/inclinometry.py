@@ -1,4 +1,4 @@
-from math import sin, cos, tan, acos
+from math import sin, cos, tan, acos, sqrt
 
 
 class Inclinometry:
@@ -210,3 +210,275 @@ class Inclinometry:
                 ))
 
         return incl_calc
+
+    def ErrorEllipse(
+        self,
+        l: float,
+        err_a: float,
+        err_i: float,
+        err_m: float
+    ) -> tuple[float, float]:
+        """
+        Расчет размеров области ошибки.
+
+        Параметры
+        ----------
+        l : float
+            Длина участка, м.
+
+        err_a : float
+            Погрешность дирекционного угла, радианы.
+
+        err_i : float
+            Погрешность зенитного угла, радианы.
+
+        err_m : float
+            Погрешность магнитного азимута, радианы.
+
+        Возвращает
+        ----------
+        (a, b)
+            a - горизонтальный размер, м
+            b - вертикальный размер, м
+        """
+
+        a = l * tan(abs(err_a) + abs(err_m))
+        b = l * tan(abs(err_i))
+
+        return a, b
+
+        
+    def perpendicular_points(
+        self,
+        north1: float,
+        east1: float,
+        md1: float,
+        north2: float,
+        east2: float,
+        md2: float,
+        a: float,
+        b: float
+        ) -> list[float]:
+        """
+        Расчет четырех точек относительно конца отрезка P2.
+
+        Параметры
+        ----------
+        north1, east1, md1 : float
+            Координаты начала отрезка.
+
+        north2, east2, md2 : float
+            Координаты конца отрезка.
+
+        a : float
+            Расстояние до точек Left и Right, м.
+
+        b : float
+            Расстояние до точек Up и Down, м.
+
+        Возвращает
+        ----------
+        list[float]
+            Один список из 12 координат:
+
+            [
+                north_left, east_left, md_left,
+                north_right, east_right, md_left,
+                north_up, east_up, md_up,
+                north_down, east_down, md_down
+            ]
+
+        Примечание
+        ----------
+        depth положительная вниз.
+        """
+
+        # Вектор от начала к концу отрезка
+        d_north = north2 - north1
+        d_east = east2 - east1
+        d_depth = md2 - md1
+
+        # Горизонтальная длина проекции отрезка
+        horizontal_length = sqrt(d_north**2 + d_east**2)
+
+        # Полная длина отрезка
+        length = sqrt(d_north**2 + d_east**2 + d_depth**2)
+
+        # Отрезок нулевой длины
+        if length == 0:
+            raise ValueError("Начальная и конечная точки совпадают.")
+
+        # Вертикальный отрезок
+        if horizontal_length == 0:
+            raise ValueError(
+                "Горизонтальная проекция отрезка равна нулю. "
+                "Невозможно однозначно определить Left и Right."
+            )
+
+        # ---------------------------------------------------------
+        # LEFT
+        # ---------------------------------------------------------
+
+        north_left = (north2 - a * d_east / horizontal_length)
+
+        east_left = (east2 + a * d_north / horizontal_length)
+
+        md_left = md2
+
+        # ---------------------------------------------------------
+        # RIGHT
+        # ---------------------------------------------------------
+
+        north_right = (
+            north2 +
+            a * d_east / horizontal_length
+        )
+
+        east_right = (
+            east2 -
+            a * d_north / horizontal_length
+        )
+
+        md_left = md2
+
+        # ---------------------------------------------------------
+        # UP
+        # ---------------------------------------------------------
+
+        north_up = (
+            north2 -
+            b * d_north * d_depth /
+            (length * horizontal_length)
+        )
+
+        east_up = (
+            east2 -
+            b * d_east * d_depth /
+            (length * horizontal_length)
+        )
+
+        # depth направлена вниз,
+        # поэтому движение вверх уменьшает depth
+        md_up = (
+            md2 -
+            b * horizontal_length / length
+        )
+
+        # ---------------------------------------------------------
+        # DOWN
+        # ---------------------------------------------------------
+
+        north_down = (
+            north2 +
+            b * d_north * d_depth /
+            (length * horizontal_length)
+        )
+
+        east_down = (
+            east2 +
+            b * d_east * d_depth /
+            (length * horizontal_length)
+        )
+
+        # depth направлена вниз,
+        # поэтому движение вниз увеличивает depth
+        md_down = (
+            md2 +
+            b * horizontal_length / length
+        )
+
+        # ---------------------------------------------------------
+        # Результат
+        # ---------------------------------------------------------
+
+        return [
+            north_left,
+            east_left,
+            md_left,
+
+            north_right,
+            east_right,
+            md_left,
+
+            north_up,
+            east_up,
+            md_up,
+
+            north_down,
+            east_down,
+            md_down
+        ]
+
+
+    def calculate_error_points(
+        self,
+        north1: float,
+        east1: float,
+        md1: float,
+        north2: float,
+        east2: float,
+        md2: float,
+        l: float,
+        err_a: float,
+        err_i: float,
+        err_m: float
+    ) -> tuple[float, float, list[float]]:
+        """
+        Расчет a, b и координат четырех крайних точек.
+
+        Параметры
+        ----------
+        north1, east1, md1 : float
+            Координаты начала отрезка.
+
+        north2, east2, md2 : float
+            Координаты конца отрезка.
+
+        l : float
+            Длина участка по стволу, м.
+
+        err_a : float
+            Погрешность азимута, радианы.
+
+        err_i : float
+            Погрешность зенитного угла, радианы.
+
+        err_m : float
+            Погрешность магнитного азимута, радианы.
+
+        Возвращает
+        ----------
+        tuple[float, float, list[float]]
+            a, b и список из 12 координат:
+            
+            [
+                north_left, east_left, md_left,
+                north_right, east_right, md_left,
+                north_up, east_up, md_up,
+                north_down, east_down, md_down
+            ]
+        """
+
+        # Расчет размеров области ошибки
+        a, b = self.ErrorEllipse(
+            l,
+            err_a,
+            err_i,
+            err_m
+        )
+
+        # Расчет координат крайних точек
+        points = self.perpendicular_points(
+            north1,
+            east1,
+            md1,
+            north2,
+            east2,
+            md2,
+            a,
+            b
+        )
+
+
+
+        return a, b, points

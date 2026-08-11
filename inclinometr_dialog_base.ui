@@ -299,8 +299,11 @@
         <layout class="QVBoxLayout" name="verticalLayout_4">
          <item>
           <widget class="QTableWidget" name="tableInclinometry">
+           <property name="sortingEnabled">
+            <bool>false</bool>
+           </property>
            <property name="columnCount">
-            <number>25</number>
+            <number>27</number>
            </property>
            <column>
             <property name="text">
@@ -364,7 +367,7 @@
            </column>
            <column>
             <property name="text">
-             <string>ΔTVD, м</string>
+             <string>ΔTVDSS, м</string>
             </property>
            </column>
            <column>
@@ -425,6 +428,16 @@
            <column>
             <property name="text">
              <string>TVDSS (право), м</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>a, м</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>b, м</string>
             </property>
            </column>
           </widget>
