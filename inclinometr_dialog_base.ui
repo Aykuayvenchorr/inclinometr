@@ -38,8 +38,78 @@
       <number>-5</number>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
+     <widget class="QWidget" name="tabSettings">
+      <attribute name="icon">
+       <iconset>
+        <normaloff>ui/ico/settings.png</normaloff>ui/ico/settings.png</iconset>
+      </attribute>
+      <attribute name="title">
+       <string>На стройку...</string>
+      </attribute>
+      <widget class="QGroupBox" name="tabSettingsWellheadGbox">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>60</y>
+         <width>541</width>
+         <height>81</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>Позиции / Устья</string>
+       </property>
+       <widget class="QWidget" name="">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>20</y>
+          <width>521</width>
+          <height>53</height>
+         </rect>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_10">
+         <item>
+          <widget class="QgsMapLayerComboBox" name="tabSettingsWellheadMLCBox"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="tabSettingsWellheadBtn">
+           <property name="text">
+            <string>Создать слой</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>541</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_9">
+        <item>
+         <widget class="QLabel" name="tabSettingsWorkdirLbl">
+          <property name="text">
+           <string>Рабочая папка</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QgsFileWidget" name="tabSettingsWorkdir">
+          <property name="storageMode">
+           <enum>QgsFileWidget::GetDirectory</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
      <widget class="QWidget" name="Ust">
       <attribute name="title">
        <string>Позиция</string>
@@ -603,6 +673,62 @@
        <column/>
       </widget>
      </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>Расчет отклонений</string>
+      </attribute>
+      <widget class="QTableWidget" name="tableCalculationDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>80</y>
+         <width>381</width>
+         <height>351</height>
+        </rect>
+       </property>
+       <property name="columnCount">
+        <number>5</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>Глубина</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Цель</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Север</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Восток</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>TVD</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QPushButton" name="btnCalculateDeviation">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>40</y>
+         <width>381</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Расчет отклонений</string>
+       </property>
+      </widget>
+     </widget>
      <widget class="QWidget" name="tab">
       <attribute name="title">
        <string>Рабочие слои</string>
@@ -778,62 +904,6 @@
        </property>
       </widget>
      </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Расчет отклонений</string>
-      </attribute>
-      <widget class="QTableWidget" name="tableCalculationDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>80</y>
-         <width>381</width>
-         <height>351</height>
-        </rect>
-       </property>
-       <property name="columnCount">
-        <number>5</number>
-       </property>
-       <column>
-        <property name="text">
-         <string>Глубина</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Цель</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Север</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Восток</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>TVD</string>
-        </property>
-       </column>
-      </widget>
-      <widget class="QPushButton" name="btnCalculateDeviation">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>40</y>
-         <width>381</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Расчет отклонений</string>
-       </property>
-      </widget>
-     </widget>
     </widget>
    </item>
    <item>
@@ -849,6 +919,11 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>QgsFileWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfilewidget.h</header>
+  </customwidget>
   <customwidget>
    <class>QgsMapLayerComboBox</class>
    <extends>QComboBox</extends>

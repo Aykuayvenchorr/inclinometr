@@ -56,6 +56,7 @@ from .modules.inclinometry import Inclinometry
 
 from .ui.tabWellhead import TabWellhead
 from .ui.tabInclinometry import TabInclinometry
+from .ui.tabSettings import TabSettings
 
 # ==========================================================
 # Загрузка интерфейса Qt Designer
@@ -136,9 +137,16 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.tabInclinometry = TabInclinometry(self)
 
+        # =====================================================
+        # Вкладка: Настройка
+        # =====================================================
+
+        self.tabSettings = TabSettings(self)
+        self.tabSettingsWellheadMLCBox.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.tabSettingsWellheadBtn.clicked.connect(self.tabSettings.wellheadLayerAdd)
 
 
-
+        # -----------------------------------------------------------------------------------------
         self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
             self.targetCrsChanged
         )
