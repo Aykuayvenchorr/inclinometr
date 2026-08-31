@@ -142,8 +142,16 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         # =====================================================
 
         self.tabSettings = TabSettings(self)
-        self.tabSettingsWellheadMLCBox.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.tabSettings.filterWellheadLayers()
+        self.tabSettings.filterTargetsLayers()
+        # Источник слоёв — текущий проект QGIS
+        self.tabSettingsWellheadMLCBox.setProject(QgsProject.instance())
+        self.tabSettingsTargetsMLCBox.setProject(QgsProject.instance())
+        # Если wellhead уже есть — выбираем его
+        self.tabSettings.selectWellheadInComboBox()
+        self.tabSettings.selectTargetsInComboBox()
         self.tabSettingsWellheadBtn.clicked.connect(self.tabSettings.wellheadLayerAdd)
+        self.tabSettingsTargetsBtn.clicked.connect(self.tabSettings.targetsLayerAdd)
 
 
         # -----------------------------------------------------------------------------------------
