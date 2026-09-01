@@ -109,9 +109,6 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         ust_index = self.tabWidget.indexOf(self.Ust)
         self.tabWidget.setTabEnabled(ust_index, False)
-
-        targets_index = self.tabWidget.indexOf(self.tabTargets)
-        self.tabWidget.setTabEnabled(targets_index, False)
         
         # Инструмент выбора
         self.wellHeadIdentifyTool = None
@@ -192,34 +189,34 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.targetLayers = []
         
         # Фильтр только точечных слоев
-        # self.mMapLayerComboBoxPositions.setFilters(
-        #     QgsMapLayerProxyModel.PointLayer
-        # )
+        self.mMapLayerComboBoxPositions.setFilters(
+            QgsMapLayerProxyModel.PointLayer
+        )
         
-        # # Фильтр только точечных слоев
-        # self.mMapLayerComboBoxTargets.setFilters(
-        #     QgsMapLayerProxyModel.PointLayer
-        # )
+        # Фильтр только точечных слоев
+        self.mMapLayerComboBoxTargets.setFilters(
+            QgsMapLayerProxyModel.PointLayer
+        )
         
         
         # Подключение кнопок для выбора слоев
  
-        # self.btnAddPositionLayer.clicked.connect(self.layerManager.addPositionLayer)
-        # self.btnRemovePositionLayer.clicked.connect(self.layerManager.removePositionLayer)
+        self.btnAddPositionLayer.clicked.connect(self.layerManager.addPositionLayer)
+        self.btnRemovePositionLayer.clicked.connect(self.layerManager.removePositionLayer)
 
-        # self.btnAddTargetLayer.clicked.connect(self.layerManager.addTargetLayer)
-        # self.btnRemoveTargetLayer.clicked.connect(self.layerManager.removeTargetLayer)
+        self.btnAddTargetLayer.clicked.connect(self.layerManager.addTargetLayer)
+        self.btnRemoveTargetLayer.clicked.connect(self.layerManager.removeTargetLayer)
 
-        # # добавление кнопок создания рабочих слоев
-        # self.btnCreatePositionsLayer.clicked.connect(self.layerManager.createPositionsLayer)
-        # self.btnCreateTargetsLayer.clicked.connect(self.layerManager.createTargetsLayer)
+        # добавление кнопок создания рабочих слоев
+        self.btnCreatePositionsLayer.clicked.connect(self.layerManager.createPositionsLayer)
+        self.btnCreateTargetsLayer.clicked.connect(self.layerManager.createTargetsLayer)
         
         # Рабочие слои
         self.layerPositions = None
         self.layerTargets = None
         self.layerOilfields = None
         
-        # self.btnCreateOilFieldsLayer.clicked.connect(self.layerManager.createOilFieldsLayer)
+        self.btnCreateOilFieldsLayer.clicked.connect(self.layerManager.createOilFieldsLayer)
         
         self.btnSelectTarget.clicked.connect(
             self.selectTarget
@@ -256,10 +253,12 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
 
     def selectFeature(self, callback):
-        """Универсальная функция выбора объекта на карте."""
-
-        # Получаем слой wellhead из ComboBox
-        layer = self.tabSettingsWellheadMLCBox.currentLayer()
+        """Универсальная функция выбора объекта на карте"""
+        layers = QgsProject.instance().mapLayersByName("Positions_WORK")
+        layer = layers[0] if layers else None
+        self.crsLayerWellHead = layer.crs()
+        self.crsOutputWellHead = layer.crs()
+        self.layerWellHead = layer
 
         if layer is None:
             QMessageBox.warning(
@@ -269,16 +268,10 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             )
             return
 
-        self.crsLayerWellHead = layer.crs()
-        self.crsOutputWellHead = layer.crs()
-        self.layerWellHead = layer
-
         self.wellHeadIdentifyTool = QgsMapToolIdentifyFeature(
             iface.mapCanvas()
         )
-
         self.wellHeadIdentifyTool.setLayer(layer)
-
         self.wellHeadIdentifyTool.featureIdentified.connect(
             callback
         )
@@ -287,42 +280,40 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
             self.wellHeadIdentifyTool
         )
 
-
     # ======================================================
     # Вкладка "Цели"
     # ======================================================
 
+
     def selectTarget(self):
-        """Выбор цели."""
-
-        # Получаем слой целей из ComboBox
-        layer = self.tabSettingsTargetsMLCBox.currentLayer()
-
-        if layer is None:
+        """Выбор цели"""
+    
+        layer = QgsProject.instance().mapLayersByName("Targets_WORK")
+    
+        if not layer:
             QMessageBox.warning(
                 self,
                 "Внимание",
-                "Сначала выберите слой целей."
+                "Не найден слой Targets_WORK."
             )
-            return
-
-        self.layerTarget = layer
-
+            return 
+        
+        self.layerTarget = layer[0]
+    
         self.targetIdentifyTool = QgsMapToolIdentifyFeature(
             iface.mapCanvas()
         )
-
-        self.targetIdentifyTool.setLayer(
-            self.layerTarget
-        )
-
+    
+        self.targetIdentifyTool.setLayer(self.layerTarget)
+    
         self.targetIdentifyTool.featureIdentified.connect(
             self.targetSelected
         )
-
+    
         iface.mapCanvas().setMapTool(
             self.targetIdentifyTool
         )
+
 
     def targetSelected(self, feature):
     
@@ -353,7 +344,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.tableTargets.setItem(
             row,
             0,
-            QtWidgets.QTableWidgetItem(str(feature["id"]))
+            QtWidgets.QTableWidgetItem(str(feature["tid"]))
         )
     
         # Координаты
@@ -392,8 +383,7 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.tableTargets.setItem(
             row,
             3,
-            QtWidgets.QTableWidgetItem(str(feature["depth"]))
-            # QtWidgets.QTableWidgetItem(str(feature["ttvd"]))
+            QtWidgets.QTableWidgetItem(str(feature["ttvd"]))
         )
 
         return northText, eastText

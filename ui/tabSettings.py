@@ -1138,10 +1138,6 @@ class TabSettings:
 
         for layer in QgsProject.instance().mapLayers().values():
 
-            # ======================================================
-            # Только точечные слои
-            # ======================================================
-
             if not isinstance(layer, QgsVectorLayer):
                 excepted_layers.append(layer)
                 continue
@@ -2133,4 +2129,12 @@ class TabSettings:
         self.filterWelltargetLayers()
         self.filterWellboreLayers()
 
-    
+    def wellheadTabActivate(self):
+        """Активирует вкладку Позиции/Устья и переключает на неё. И активирует вкладку цели"""
+        ust_index = self.tab.tabWidget.indexOf(self.tab.Ust)
+        targets_index = self.tab.tabWidget.indexOf(self.tab.tabTargets)
+        # Включаем именно вкладку
+        self.tab.tabWidget.setTabEnabled(ust_index, True)
+        self.tab.tabWidget.setTabEnabled(targets_index, True)
+        # Переходим на неё
+        self.tab.tabWidget.setCurrentWidget(self.tab.Ust)

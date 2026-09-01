@@ -1,4 +1,4 @@
-from math import sin, cos, tan, acos, sqrt
+from math import degrees, radians, sin, cos, tan, acos, sqrt
 
 
 class Inclinometry:
@@ -6,39 +6,132 @@ class Inclinometry:
     Расчет инклинометрии
     """
 
+    def cross360(azimuth_grid_start, azimuth_grid_end):
+        # ======================================================
+        # Переводим азимуты из радиан в градусы
+        # ======================================================
+
+        azimuth_start_deg = degrees(azimuth_grid_start)
+        azimuth_end_deg = degrees(azimuth_grid_end)
+
+        # Приводим азимуты к диапазону 0...360°
+        azimuth_start_deg %= 360
+        azimuth_end_deg %= 360
+
+        # ======================================================
+        # Определяем разницу между азимутами
+        # ======================================================
+
+        delta_azimuth_deg = (
+            azimuth_end_deg - azimuth_start_deg
+        )
+
+        # ======================================================
+        # Учитываем переход через 0°/360°
+        # ======================================================
+
+        if delta_azimuth_deg > 180:
+            delta_azimuth_deg -= 360
+
+        elif delta_azimuth_deg < -180:
+            delta_azimuth_deg += 360
+
+        # ======================================================
+        # Средний азимут в градусах
+        # ======================================================
+
+        azimuth_mean_deg = (
+            azimuth_start_deg
+            + delta_azimuth_deg / 2
+        )
+
+        # Возвращаем средний азимут в диапазон 0...360°
+        azimuth_mean_deg %= 360
+
+        # ======================================================
+        # Переводим средний азимут обратно в радианы
+        # ======================================================
+
+        azimuth_mean = radians(azimuth_mean_deg)
+        return azimuth_mean
+
+
     def method_mean_angle(self, dl: float, azimuth_grid_start: float, azimuth_grid_end: float, zenith_start: float, zenith_end: float) -> tuple[float, float, float]:
         """
-        Расчет приращений по методу средних углов
+        Расчет приращений по методу средних углов.
 
-        Параметры
-        ----------
-        dl : float
-            Приращение длины, м
-        azimuth_grid_start : float
-            Дирекционный угол начала интервала, радианы
-        azimuth_grid_start : float
-            Дирекционный угол конца интервала, радианы
-        zenith_start : float
-            Зенитный угол начала интервала, радианы
-        zenith_end : float
-            Зенитный угол конца интервала, радианы
-            
-        Возвращает
-        ----------
-        (dNorth: float, dEast: float, dZ: float)
-            Кортеж приращений координат Север, Восток, Глубина
+        На вход углы поступают в радианах.
+        Корректировка среднего азимута выполняется в градусах.
         """
-        # Ошибка при переходе через 0 градусов
-        # if abs(azimuth_grid_end - azimuth_grid_start) > 3.14159:
-        #     if azimuth_grid_start > azimuth_grid_end:
-        #         azimuth_grid_end += 2 * 3.14159
-        #     else:
-        #         azimuth_grid_start += 2 * 3.14159
-        dNorth = dl * sin((zenith_start + zenith_end) / 2.0) * cos((azimuth_grid_start + azimuth_grid_end) / 2.0)
-        dEast  = dl * sin((zenith_start + zenith_end) / 2.0) * sin((azimuth_grid_start + azimuth_grid_end) / 2.0)
-        dZ     = dl * cos((zenith_start + zenith_end) / 2.0)
+        azimuth_mean = self.cross360(azimuth_grid_start, azimuth_grid_end)
+
+        # ======================================================
+        # Средний зенитный угол
+        #
+        # Он уже в радианах, поэтому здесь ничего
+        # переводить не нужно.
+        # ======================================================
+
+        zenith_mean = (
+            zenith_start + zenith_end
+        ) / 2.0
+
+        # ======================================================
+        # Расчет приращений
+        # ======================================================
+
+        dNorth = (
+            dl
+            * sin(zenith_mean)
+            * cos(azimuth_mean)
+        )
+
+        dEast = (
+            dl
+            * sin(zenith_mean)
+            * sin(azimuth_mean)
+        )
+
+        dZ = (
+            dl
+            * cos(zenith_mean)
+        )
 
         return dNorth, dEast, dZ
+
+    # def method_mean_angle(self, dl: float, azimuth_grid_start: float, azimuth_grid_end: float, zenith_start: float, zenith_end: float) -> tuple[float, float, float]:
+    #     """
+    #     Расчет приращений по методу средних углов
+
+    #     Параметры
+    #     ----------
+    #     dl : float
+    #         Приращение длины, м
+    #     azimuth_grid_start : float
+    #         Дирекционный угол начала интервала, радианы
+    #     azimuth_grid_start : float
+    #         Дирекционный угол конца интервала, радианы
+    #     zenith_start : float
+    #         Зенитный угол начала интервала, радианы
+    #     zenith_end : float
+    #         Зенитный угол конца интервала, радианы
+            
+    #     Возвращает
+    #     ----------
+    #     (dNorth: float, dEast: float, dZ: float)
+    #         Кортеж приращений координат Север, Восток, Глубина
+    #     """
+    #     # Ошибка при переходе через 0 градусов
+    #     # if abs(azimuth_grid_end - azimuth_grid_start) > 3.14159:
+    #     #     if azimuth_grid_start > azimuth_grid_end:
+    #     #         azimuth_grid_end += 2 * 3.14159
+    #     #     else:
+    #     #         azimuth_grid_start += 2 * 3.14159
+    #     dNorth = dl * sin((zenith_start + zenith_end) / 2.0) * cos((azimuth_grid_start + azimuth_grid_end) / 2.0)
+    #     dEast  = dl * sin((zenith_start + zenith_end) / 2.0) * sin((azimuth_grid_start + azimuth_grid_end) / 2.0)
+    #     dZ     = dl * cos((zenith_start + zenith_end) / 2.0)
+
+    #     return dNorth, dEast, dZ
 
     def method_minimum_curvature(self, dl: float, azimuth_grid_start: float, azimuth_grid_end: float, zenith_start: float, zenith_end: float) -> tuple[float, float, float]:
         """
