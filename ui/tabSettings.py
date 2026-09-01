@@ -1032,6 +1032,11 @@ class TabSettings:
             excepted_layers
         )
 
+        print(
+            "EXCEPTED:",
+            [layer.name() for layer in excepted_layers]
+        )
+
     def filterWelltargetLayers(self):
         """
         Фильтрует слои для ComboBox targets.
@@ -1141,7 +1146,7 @@ class TabSettings:
                 excepted_layers.append(layer)
                 continue
 
-            if layer.geometryType() != QgsWkbTypes.NoGeometry:
+            if layer.geometryType() != QgsWkbTypes.NullGeometry:
                 excepted_layers.append(layer)
                 continue
 
@@ -2120,5 +2125,12 @@ class TabSettings:
         """
 
         self.updateWellboreWellheadField()
+
+    def _onLayersChanged(self, *args):
+        """Обновляет фильтрацию ComboBox после изменения проекта."""
+
+        self.filterWellheadLayers()
+        self.filterWelltargetLayers()
+        self.filterWellboreLayers()
 
     

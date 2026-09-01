@@ -142,21 +142,31 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         # =====================================================
 
         self.tabSettings = TabSettings(self)
-        self.tabSettings.filterWellheadLayers()
-        self.tabSettings.filterWelltargetLayers()
-        self.tabSettings.filterWellboreLayers()
         # Источник слоёв — текущий проект QGIS
         self.tabSettingsWellheadMLCBox.setProject(QgsProject.instance())
         self.tabSettingsTargetsMLCBox.setProject(QgsProject.instance())
         self.tabSettingsBoresMLCBox.setProject(QgsProject.instance())
-        # Если wellhead уже есть — выбираем его
+
+        # Применяем фильтры после установки проекта
+        self.tabSettings.filterWellheadLayers()
+        self.tabSettings.filterWelltargetLayers()
+        self.tabSettings.filterWellboreLayers()
+
+        # Если слои уже есть в проекте — выбираем их
         self.tabSettings.selectWellheadInComboBox()
         self.tabSettings.selectWelltargetInComboBox()
         self.tabSettings.selectWellboreInComboBox()
+
+        # Повторная фильтрация при добавлении/удалении слоёв
+        QgsProject.instance().layersAdded.connect(self.tabSettings._onLayersChanged)
+        QgsProject.instance().layersRemoved.connect(self.tabSettings._onLayersChanged)
+
+        # Подключаем кнопки
         self.tabSettingsWellheadBtn.clicked.connect(self.tabSettings.wellheadLayerAdd)
         self.tabSettingsTargetsBtn.clicked.connect(self.tabSettings.welltargetLayerAdd)
         self.tabSettingsBoresBtn.clicked.connect(self.tabSettings.wellboreLayerAdd)
 
+ 
 
         # -----------------------------------------------------------------------------------------
         self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
