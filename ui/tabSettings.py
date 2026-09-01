@@ -19,6 +19,7 @@ from qgis.core import (
     QgsCoordinateTransformContext,
     QgsRelation,
     QgsEditorWidgetSetup,
+    QgsDefaultValue,
 )
 from PyQt5.QtCore import QVariant
 from qgis.utils import iface
@@ -499,6 +500,12 @@ class TabSettings:
 
         QgsProject.instance().addMapLayer(layer)
         self.tab.tabSettingsWellheadMLCBox.setLayer(layer)
+        # После загрузки wellhead
+        self.connectWellheadSignals()
+
+        # И сразу обновляем wellbore,
+        # если он уже загружен
+        self.updateWellboreWellheadField()
 
         # ==========================================================
         # 12. Настраиваем поле type
@@ -630,7 +637,17 @@ class TabSettings:
         )
 
         # ==========================================================
-        # 7. Проверяем, что настройка действительно установилась
+        # 7. Устанавливаем значение по умолчанию
+        # Позиция = id 0
+        # ==========================================================
+
+        layer.setDefaultValueDefinition(
+            type_field_index,
+            QgsDefaultValue("0")
+        )
+
+        # ==========================================================
+        # 8. Проверяем, что настройка действительно установилась
         # ==========================================================
 
         current_setup = layer.editorWidgetSetup(
@@ -750,6 +767,11 @@ class TabSettings:
             type_field_index,
             widget_setup
         )
+
+        layer.setDefaultValueDefinition(
+                    type_field_index,
+                    QgsDefaultValue("0")
+                )
 
         # ==========================================================
         # 7. Проверяем, что настройка действительно установилась
@@ -875,6 +897,11 @@ class TabSettings:
             type_field_index,
             widget_setup
         )
+
+        layer.setDefaultValueDefinition(
+                    type_field_index,
+                    QgsDefaultValue("0")
+                )
 
         # ==========================================================
         # 7. Проверяем, что настройка действительно установилась
@@ -1114,7 +1141,7 @@ class TabSettings:
                 excepted_layers.append(layer)
                 continue
 
-            if layer.geometryType() != QgsWkbTypes.PointGeometry:
+            if layer.geometryType() != QgsWkbTypes.NoGeometry:
                 excepted_layers.append(layer)
                 continue
 
@@ -1769,8 +1796,9 @@ class TabSettings:
                     existing_layer
                 )
                 self.setupWellboreWellheadField(existing_layer)
+                self.connectWellheadSignals()
 
-                self.tab.tabSettingsTargetsMLCBox.setLayer(existing_layer)
+                self.tab.tabSettingsBoresMLCBox.setLayer(existing_layer)
                 QMessageBox.information(
                     self.tab,
                     "Слой wellbore",
@@ -1928,6 +1956,7 @@ class TabSettings:
 
         self.setupWellboreTypeField(layer)
         self.setupWellboreWellheadField(layer)
+        self.connectWellheadSignals()
         # ==========================================
         # 17. Сообщение
         # ==========================================
@@ -1942,86 +1971,62 @@ class TabSettings:
 
     def setupWellboreWellheadField(self, layer):
         """
-        Настраивает поле wellhead_id в слое wellbore
-        как выпадающий список.
+        Настраивает wellhead_id как выпадающий список.
+
+        Список формируется из слоя wellhead.
 
         Отображение:
             Устье (1)
             Позиция (2)
 
-        В wellbore.wellhead_id сохраняется только id.
+        В БД сохраняется только id.
         """
-
-        # ==========================================
-        # 1. Находим поле wellhead_id
-        # ==========================================
 
         field_index = layer.fields().indexOf("wellhead_id")
 
         if field_index == -1:
-            print("Поле wellhead_id отсутствует в wellbore.")
+            print("Поле wellhead_id отсутствует.")
             return
 
-        # ==========================================
-        # 2. Получаем слой wellhead
-        # ==========================================
-
+        # Получаем wellhead
         wellhead_layer = self.getWellheadLayer()
-
-        if wellhead_layer is None:
-            print("Слой wellhead не загружен в проект.")
-            return
-
-        if not wellhead_layer.isValid():
-            print("Слой wellhead недействителен.")
-            return
-
-        # ==========================================
-        # 3. Проверяем наличие нужных полей
-        # ==========================================
-
-        if wellhead_layer.fields().indexOf("id") == -1:
-            print("В слое wellhead отсутствует поле id.")
-            return
-
-        if wellhead_layer.fields().indexOf("name") == -1:
-            print("В слое wellhead отсутствует поле name.")
-            return
-
-        # ==========================================
-        # 4. Формируем список значений
-        # ==========================================
 
         value_map = []
 
-        for feature in wellhead_layer.getFeatures():
+        # Если wellhead уже существует и содержит объекты —
+        # формируем список
+        if wellhead_layer is not None and wellhead_layer.isValid():
 
-            wellhead_id = feature["id"]
-            wellhead_name = feature["name"]
+            if (
+                wellhead_layer.fields().indexOf("id") != -1
+                and wellhead_layer.fields().indexOf("name") != -1
+            ):
 
-            if wellhead_id is None:
-                continue
+                for feature in wellhead_layer.getFeatures():
 
-            if wellhead_name is None:
-                wellhead_name = ""
+                    wellhead_id = feature["id"]
+                    wellhead_name = feature["name"]
 
-            display_name = f"{wellhead_name} ({wellhead_id})"
+                    if wellhead_id is None:
+                        continue
 
-            value_map.append({
-                display_name: wellhead_id
-            })
+                    if wellhead_name is None:
+                        wellhead_name = ""
 
-        # ==========================================
-        # 5. Проверяем, есть ли значения
-        # ==========================================
+                    display_name = (
+                        f"{wellhead_name} ({wellhead_id})"
+                    )
 
-        if not value_map:
-            print("В слое wellhead нет записей.")
-            return
+                    value_map.append({
+                        display_name: wellhead_id
+                    })
 
-        # ==========================================
-        # 6. Создаём ValueMap
-        # ==========================================
+        # ==========================================================
+        # ВАЖНО:
+        # ValueMap устанавливаем ВСЕГДА.
+        #
+        # Даже если value_map пока пустой.
+        # ==========================================================
 
         widget_setup = QgsEditorWidgetSetup(
             "ValueMap",
@@ -2030,23 +2035,90 @@ class TabSettings:
             }
         )
 
-        # ==========================================
-        # 7. Устанавливаем настройку поля
-        # ==========================================
-
         layer.setEditorWidgetSetup(
             field_index,
             widget_setup
         )
 
-        # ==========================================
-        # 8. Обновляем слой
-        # ==========================================
-
         layer.updateFields()
 
         print(
-            "wellhead_id настроен как выпадающий список:"
+            "wellhead_id настроен как ValueMap:",
+            value_map
         )
 
-        print(value_map)
+    def updateWellboreWellheadField(self):
+        """
+        Обновляет список значений wellhead_id.
+        """
+
+        wellbore_layer = self.getWellboreLayer()
+
+        if wellbore_layer is None:
+            return
+
+        self.setupWellboreWellheadField(
+            wellbore_layer
+        )
+
+    def connectWellheadSignals(self):
+        """
+        Подключает сигналы слоя wellhead только один раз.
+        """
+
+        wellhead_layer = self.getWellheadLayer()
+
+        if wellhead_layer is None:
+            print("wellhead не найден.")
+            return
+
+        # Если сигналы уже подключены,
+        # повторно ничего не делаем
+        if getattr(self, "_wellhead_signals_connected", False):
+            print("Сигналы wellhead уже подключены.")
+            return
+
+        # ==========================================
+        # Добавление объекта
+        # ==========================================
+
+        wellhead_layer.featureAdded.connect(
+            self._onWellheadChanged
+        )
+
+        # ==========================================
+        # Удаление объекта
+        # ==========================================
+
+        wellhead_layer.featureDeleted.connect(
+            self._onWellheadChanged
+        )
+
+        # ==========================================
+        # Изменение атрибутов
+        # ==========================================
+
+        wellhead_layer.attributeValueChanged.connect(
+            self._onWellheadAttributeChanged
+        )
+
+        self._wellhead_signals_connected = True
+
+        print("Сигналы wellhead подключены.")
+
+    def _onWellheadChanged(self, fid):
+        """
+        Вызывается при добавлении или удалении
+        объекта wellhead.
+        """
+
+        self.updateWellboreWellheadField()
+
+    def _onWellheadAttributeChanged(self, fid, field, value):
+        """
+        Вызывается при изменении атрибута wellhead.
+        """
+
+        self.updateWellboreWellheadField()
+
+    
