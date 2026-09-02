@@ -6,9 +6,11 @@ from qgis.core import (
     QgsProject,
     QgsCoordinateTransform,
     QgsPointXY,
+    QgsCoordinateReferenceSystem,
 )
 from qgis.gui import QgsMapToolIdentifyFeature
 from qgis.utils import iface
+from qgis.PyQt.QtCore import QTimer
 
 
 class TabWellhead:
@@ -20,6 +22,7 @@ class TabWellhead:
         self.crsLayerWellHead = None
         self.crsOutputWellHead = None
         self.layerWellHead = None
+        self.tab.selectedWellHead = None
 
         self.wellHeadIdentifyTool = None
 
@@ -33,17 +36,16 @@ class TabWellhead:
             None    — способ не выбран
         """
 
-        if self.tab.tabSettingsCRSMapBtn.isChecked():
+        if self.tab.tabWellheadsCRSMapBtn.isChecked():
             return "map"
 
-        if self.tab.tabSettingsCRSValueBtn.isChecked():
+        if self.tab.tabWellheadsCRSValueBtn.isChecked():
             return "value"
 
         QMessageBox.warning(
             self.tab,
             "Внимание",
-            "Выберите способ получения координат "
-            "позиции / устья в настройках."
+            "Выберите способ получения координат"
         )
 
         return None
@@ -87,10 +89,10 @@ class TabWellhead:
         self.crsLayerWellHead = layer.crs()
         self.crsOutputWellHead = layer.crs()
 
-        # Показываем CRS слоя
-        self.tab.mQgsProjectionSelectionWidgetWellHead.setCrs(
-            self.crsLayerWellHead
-        )
+        # # Показываем CRS слоя
+        # self.tab.mQgsProjectionSelectionWidgetWellHead.setCrs(
+        #     self.crsLayerWellHead
+        # )
 
         # Создаём инструмент выбора объекта
         self.wellHeadIdentifyTool = QgsMapToolIdentifyFeature(
@@ -118,10 +120,10 @@ class TabWellhead:
             None    — способ не выбран.
         """
 
-        if self.tab.tabSettingsCRSMapBtn.isChecked():
+        if self.tab.tabWellheadsCRSMapBtn.isChecked():
             return "map"
 
-        if self.tab.tabSettingsCRSValueBtn.isChecked():
+        if self.tab.tabWellheadsCRSValueBtn.isChecked():
             return "value"
 
         QMessageBox.warning(
@@ -237,6 +239,13 @@ class TabWellhead:
             east = point.x()
             north = point.y()
 
+            # CRS
+            crs_l = self.crsLayerWellHead
+            # Показываем CRS слоя
+            self.tab.mQgsProjectionSelectionWidgetWellHead.setCrs(
+                self.crsLayerWellHead
+            )
+
         elif coordinates_source == "value":
             # ------------------------------------------
             # Координаты из атрибутов
@@ -244,6 +253,7 @@ class TabWellhead:
 
             east = feature["east"]
             north = feature["north"]
+
 
             # Проверяем заполненность
             if east is None or north is None:
@@ -268,9 +278,53 @@ class TabWellhead:
                 )
                 return
 
-        # CRS
-        crs_l = self.crsLayerWellHead
-        crs_t = self.crsOutputWellHead
+            # ------------------------------------------
+            # CRS из поля crs_text
+            # ------------------------------------------
+
+            crs_text = feature["crs_text"]
+
+            if crs_text is None or str(crs_text).strip() == "":
+                QMessageBox.warning(
+                    self.tab,
+                    "Ошибка",
+                    "В атрибутах выбранного объекта не указана "
+                    "система координат в поле crs_text."
+                )
+                return
+
+            crs_text = str(crs_text).strip()
+
+            # Например: 4326
+            # if crs_text.isdigit():
+            #     crs_l = QgsCoordinateReferenceSystem(
+            #         f"EPSG:{crs_text}"
+            #     )
+
+            # Например: EPSG:4326
+            # else:
+            #     crs_l = QgsCoordinateReferenceSystem(
+            #         crs_text
+            #     )
+            crs_l = QgsCoordinateReferenceSystem(crs_text)
+
+            if not crs_l.isValid():
+                QMessageBox.warning(
+                    self.tab,
+                    "Ошибка",
+                    f"Не удалось определить систему координат:\n"
+                    f"{crs_text}"
+                )
+                return
+
+            self.crsLayerWellHead = crs_l
+            self.tab.mQgsProjectionSelectionWidgetWellHead.setCrs(
+                self.crsLayerWellHead
+            )
+            
+
+        # CRS в которой планируем вести рассчет (выбор в comboBox)
+        crs_t = self.crsOutputWellHead        
 
         # Преобразование координат
         transform = QgsCoordinateTransform(
@@ -425,3 +479,15 @@ class TabWellhead:
         """
 
         return self.crsOutputWellHead
+
+    def inclTabActivate(self):
+        if self.tab.selectedWellHead:
+            incls_index = self.tab.tabWidget.indexOf(self.tab.tabIncls)
+            self.tab.tabWidget.setTabEnabled(incls_index, True)
+            self.tab.tabWidget.setCurrentWidget(self.tab.tabIncls)
+        else:
+            QMessageBox.warning(
+                    self.tab,
+                    "Внимание",
+                    "Выберите позицию"
+                )

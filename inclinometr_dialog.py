@@ -57,6 +57,8 @@ from .modules.inclinometry import Inclinometry
 from .ui.tabWellhead import TabWellhead
 from .ui.tabInclinometry import TabInclinometry
 from .ui.tabSettings import TabSettings
+from .ui.tabTarget import TabTarget
+
 
 # ==========================================================
 # Загрузка интерфейса Qt Designer
@@ -94,37 +96,17 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.layerManager = LayerManager(self)
 
-        # =====================================================
-        # Загрузка плагина
-        # =====================================================
-
-        # Вкладки:
-        # 0 - "Позиция": Активная вкладка при запуске плагина
-        # 1 - "Инклинометрия": Не активная вкладка до выбора позиции (устья)
-        # 2 - "Цели": Не активная вкладка до расчета инклинометрии
-        # self.tabWidget.setTabEnabled(1, False)
-        # self.tabWidget.setTabEnabled(2, False)
-        # self.tabWidget.setTabEnabled(3, False)
         self.tabWidget.setCurrentIndex(0)
 
-        ust_index = self.tabWidget.indexOf(self.Ust)
-        self.tabWidget.setTabEnabled(ust_index, False)
+        tabWellheads_index = self.tabWidget.indexOf(self.tabWellheads)
+        self.tabWidget.setTabEnabled(tabWellheads_index, False)
 
         targets_index = self.tabWidget.indexOf(self.tabTargets)
         self.tabWidget.setTabEnabled(targets_index, False)
+
+        incls_index = self.tabWidget.indexOf(self.tabIncls)
+        self.tabWidget.setTabEnabled(incls_index, False)
         
-        # Инструмент выбора
-        self.wellHeadIdentifyTool = None
-        # Здесь будет храниться выбранное устье
-        self.targetIdentifyTool = None
-        # Здесь будет храниться выбранное устье
-        self.selectedWellHead = None
-        # Система координат слоя
-        self.crsLayerWellHead = None
-
-        # Выбранная система координат
-        self.crsOutputWellHead = None
-
         # =====================================================
         # Вкладка: Позиция / Устье
         # =====================================================
@@ -136,12 +118,23 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mQgsProjectionSelectionWidgetWellHead.crsChanged.connect( self.tabWellhead.wellHeadCrsChanged )
         # Текущая система координат для расчетов
         self.crsOutputWellHead = self.tabWellhead.getCurrentCrs()
+        self.tabWellheadInclGoBtn.clicked.connect(self.tabWellhead.inclTabActivate)
+
+        # =====================================================
+        # Вкладка: Цели
+        # =====================================================
+
+        self.tabTarget = TabTarget(self)
+        self.btnSelectTarget.clicked.connect(self.tabTarget.selectTarget)
+        self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(self.tabTarget.targetCrsChanged)
 
         # =====================================================
         # Вкладка: Инклинометрия
         # =====================================================
 
         self.tabInclinometry = TabInclinometry(self)
+        self.tabInclTargetGoBtn.clicked.connect(self.tabInclinometry.targetTabActivate)
+
 
         # =====================================================
         # Вкладка: Настройка
@@ -172,256 +165,3 @@ class MainInclinometrDialog(QtWidgets.QDialog, FORM_CLASS):
         self.tabSettingsTargetsBtn.clicked.connect(self.tabSettings.welltargetLayerAdd)
         self.tabSettingsBoresBtn.clicked.connect(self.tabSettings.wellboreLayerAdd)
         self.tabSettingsWellheadGoBtn.clicked.connect(self.tabSettings.wellheadTabActivate)
-
- 
-
-        # -----------------------------------------------------------------------------------------
-        self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
-            self.targetCrsChanged
-        )
-
-        # %% Вкладка --- Цели ---
-
-        
-        self.selectedTarget = None
-
-        # %% Вкладка --- Слои
-
-        # исходные слои которые БУДУТ включены в рабочие слои
-        self.positionLayers = []
-        self.targetLayers = []
-        
-        # Фильтр только точечных слоев
-        # self.mMapLayerComboBoxPositions.setFilters(
-        #     QgsMapLayerProxyModel.PointLayer
-        # )
-        
-        # # Фильтр только точечных слоев
-        # self.mMapLayerComboBoxTargets.setFilters(
-        #     QgsMapLayerProxyModel.PointLayer
-        # )
-        
-        
-        # Подключение кнопок для выбора слоев
- 
-        # self.btnAddPositionLayer.clicked.connect(self.layerManager.addPositionLayer)
-        # self.btnRemovePositionLayer.clicked.connect(self.layerManager.removePositionLayer)
-
-        # self.btnAddTargetLayer.clicked.connect(self.layerManager.addTargetLayer)
-        # self.btnRemoveTargetLayer.clicked.connect(self.layerManager.removeTargetLayer)
-
-        # # добавление кнопок создания рабочих слоев
-        # self.btnCreatePositionsLayer.clicked.connect(self.layerManager.createPositionsLayer)
-        # self.btnCreateTargetsLayer.clicked.connect(self.layerManager.createTargetsLayer)
-        
-        # Рабочие слои
-        self.layerPositions = None
-        self.layerTargets = None
-        self.layerOilfields = None
-        
-        # self.btnCreateOilFieldsLayer.clicked.connect(self.layerManager.createOilFieldsLayer)
-        
-        self.btnSelectTarget.clicked.connect(
-            self.selectTarget
-        )
-        
-        # Система координат слоя целей
-        self.crsLayerTarget = None
-        
-        # Система координат вывода целей
-        self.crsOutputTarget = None
-        
-        
-        self.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(
-            self.targetCrsChanged
-        )
-        
-        
-        self.selectedTargets = []
-
-        # ПРИЧИНА ДВОЙНОГО ВЫЗОВА ПРОВОДНИКА
-        # self.btnLoadInclinometry.clicked.connect(
-        #     self.math.loadInclinometry
-        # )
-
-
-        # self.btnCalculateInclinometry.clicked.connect(
-        #     self.math.calculateInclinometry
-        # )
-        # self.btnCalculateDeviation.clicked.connect(
-        #     self.math.calculationDeviation
-        # )
-        # self.geodezy = Geodezy()
-        # self.inclinometry = Inclinometry()
-
-
-    def selectFeature(self, callback):
-        """Универсальная функция выбора объекта на карте."""
-
-        # Получаем слой wellhead из ComboBox
-        layer = self.tabSettingsWellheadMLCBox.currentLayer()
-
-        if layer is None:
-            QMessageBox.warning(
-                self,
-                "Внимание",
-                "Сначала выберите слой."
-            )
-            return
-
-        self.crsLayerWellHead = layer.crs()
-        self.crsOutputWellHead = layer.crs()
-        self.layerWellHead = layer
-
-        self.wellHeadIdentifyTool = QgsMapToolIdentifyFeature(
-            iface.mapCanvas()
-        )
-
-        self.wellHeadIdentifyTool.setLayer(layer)
-
-        self.wellHeadIdentifyTool.featureIdentified.connect(
-            callback
-        )
-
-        iface.mapCanvas().setMapTool(
-            self.wellHeadIdentifyTool
-        )
-
-
-    # ======================================================
-    # Вкладка "Цели"
-    # ======================================================
-
-    def selectTarget(self):
-        """Выбор цели."""
-
-        # Получаем слой целей из ComboBox
-        layer = self.tabSettingsTargetsMLCBox.currentLayer()
-
-        if layer is None:
-            QMessageBox.warning(
-                self,
-                "Внимание",
-                "Сначала выберите слой целей."
-            )
-            return
-
-        self.layerTarget = layer
-
-        self.targetIdentifyTool = QgsMapToolIdentifyFeature(
-            iface.mapCanvas()
-        )
-
-        self.targetIdentifyTool.setLayer(
-            self.layerTarget
-        )
-
-        self.targetIdentifyTool.featureIdentified.connect(
-            self.targetSelected
-        )
-
-        iface.mapCanvas().setMapTool(
-            self.targetIdentifyTool
-        )
-
-    def targetSelected(self, feature):
-    
-        # Сохраняем выбранную цель
-        self.selectedTargets.append(feature)
-    
-        # Определяем СК слоя
-        crs = self.layerTarget.crs()
-    
-        self.crsLayerTarget = crs
-        self.crsOutputTarget = crs
-        self.addTargetToTable(feature)
-        self.mQgsProjectionSelectionWidgetTarget.blockSignals(True)
-        self.mQgsProjectionSelectionWidgetTarget.setCrs(crs)
-        self.mQgsProjectionSelectionWidgetTarget.blockSignals(False)
-    
-        iface.mapCanvas().unsetMapTool(
-            self.targetIdentifyTool
-        )
-
-
-    def addTargetToTable(self, feature):
-    
-        row = self.tableTargets.rowCount()
-        self.tableTargets.insertRow(row)
-    
-        # ID цели
-        self.tableTargets.setItem(
-            row,
-            0,
-            QtWidgets.QTableWidgetItem(str(feature["id"]))
-        )
-    
-        # Координаты
-        north = feature.geometry().asPoint().y()
-        east = feature.geometry().asPoint().x()
-    
-        transform = QgsCoordinateTransform(
-            self.layerTarget.crs(),
-            self.crsOutputTarget,
-            QgsProject.instance()
-        )
-    
-        targetPoint = transform.transform(
-            QgsPointXY(east, north)
-        )
-    
-        if self.crsOutputTarget.isGeographic():
-            northText = f"{targetPoint.y():.10f}"
-            eastText = f"{targetPoint.x():.10f}"
-        else:
-            northText = f"{targetPoint.y():.3f}"
-            eastText = f"{targetPoint.x():.3f}"
-    
-        self.tableTargets.setItem(
-            row,
-            1,
-            QtWidgets.QTableWidgetItem(northText)
-        )
-    
-        self.tableTargets.setItem(
-            row,
-            2,
-            QtWidgets.QTableWidgetItem(eastText)
-        )
-
-        self.tableTargets.setItem(
-            row,
-            3,
-            QtWidgets.QTableWidgetItem(str(feature["depth"]))
-            # QtWidgets.QTableWidgetItem(str(feature["ttvd"]))
-        )
-
-        return northText, eastText
-
-    # ======================================================
-    # Смена системы координат целей
-    # ======================================================
-
-    def targetCrsChanged(self, crs):
-
-        self.crsOutputTarget = crs
-    
-        # очистить таблицу
-        self.tableTargets.setRowCount(0)
-    
-        # заполнить заново
-        for feature in self.selectedTargets:
-            self.addTargetToTable(feature)
-    
-        # если выбрана текущая цель — обновить поля справа
-        if self.selectedTargets:
-            feature = self.selectedTargets[-1]
-    
-            northText = self.tableTargets.item(
-                self.tableTargets.rowCount()-1, 1
-            ).text()
-    
-            eastText = self.tableTargets.item(
-                self.tableTargets.rowCount()-1, 2
-            ).text()
-

@@ -42,7 +42,7 @@ class TabSettings:
         BASE_DIR = Path(__file__).resolve().parent.parent
         config_path = os.path.join(BASE_DIR, "settings", "config.json")
         
-        print(f'BASE_DIR: {config_path}')
+        # print(f'BASE_DIR: {config_path}')
         # Открываем файл с указанием кодировки utf-8
         with open(config_path, "r", encoding="utf-8") as file:
             config = json.load(file)
@@ -1032,10 +1032,10 @@ class TabSettings:
             excepted_layers
         )
 
-        print(
-            "EXCEPTED:",
-            [layer.name() for layer in excepted_layers]
-        )
+        # print(
+        #     "EXCEPTED:",
+        #     [layer.name() for layer in excepted_layers]
+        # )
 
     def filterWelltargetLayers(self):
         """
@@ -1061,8 +1061,8 @@ class TabSettings:
             "rel",
             "north",
             "east",
-            "depth",
-            "alt",
+            "tvd",
+            "tvdss",
             "alt_note",
             "crs_param",
             "crs_text",
@@ -1430,8 +1430,8 @@ class TabSettings:
         fields.append(QgsField("rel", QVariant.Bool))
         fields.append(QgsField("north", QVariant.Double))
         fields.append(QgsField("east", QVariant.Double))
-        fields.append(QgsField("depth", QVariant.Double))
-        fields.append(QgsField("alt", QVariant.Double))
+        fields.append(QgsField("tvd", QVariant.Double))
+        fields.append(QgsField("tvdss", QVariant.Double))
         fields.append(QgsField("alt_note", QVariant.String))
         fields.append(QgsField("crs_param", QVariant.String))
         fields.append(QgsField("crs_text", QVariant.String))
@@ -2131,10 +2131,39 @@ class TabSettings:
 
     def wellheadTabActivate(self):
         """Активирует вкладку Позиции/Устья и переключает на неё. И активирует вкладку цели"""
-        ust_index = self.tab.tabWidget.indexOf(self.tab.Ust)
-        targets_index = self.tab.tabWidget.indexOf(self.tab.tabTargets)
-        # Включаем именно вкладку
-        self.tab.tabWidget.setTabEnabled(ust_index, True)
-        self.tab.tabWidget.setTabEnabled(targets_index, True)
-        # Переходим на неё
-        self.tab.tabWidget.setCurrentWidget(self.tab.Ust)
+        if self.checkSelectedLayers():
+            tabWellheads_index = self.tab.tabWidget.indexOf(self.tab.tabWellheads)
+            # targets_index = self.tab.tabWidget.indexOf(self.tab.tabTargets)
+            # Включаем именно вкладку
+            self.tab.tabWidget.setTabEnabled(tabWellheads_index, True)
+            # self.tab.tabWidget.setTabEnabled(targets_index, True)
+            # Переходим на неё
+            self.tab.tabWidget.setCurrentWidget(self.tab.tabWellheads)
+
+    def checkSelectedLayers(self) -> bool:
+        """Проверка выбора слоев устье/позиции, цели, стволы"""
+        layerWellhead = self.tab.tabSettingsWellheadMLCBox.currentLayer()
+        layerWelltarget = self.tab.tabSettingsTargetsMLCBox.currentLayer()
+        layerWellbore = self.tab.tabSettingsBoresMLCBox.currentLayer()
+        if layerWellhead is None:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Сначала выберите слой позиций/устьев."
+            )
+            return False
+        if layerWelltarget is None:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Сначала выберите слой целей."
+            )
+            return False
+        if layerWellbore is None:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Сначала выберите слой стволов."
+            )
+            return False
+        return True

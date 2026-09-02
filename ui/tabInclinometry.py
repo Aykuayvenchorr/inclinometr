@@ -603,3 +603,8 @@ class TabInclinometry:
         #     tvdss_col=IncCol["TVDSS_RIGHT"],
         #     switch=0
         # )
+    def targetTabActivate(self):
+        # Нужна проверка на то что инклинометрия посчитана??  
+        targets_index = self.tab.tabWidget.indexOf(self.tab.tabTargets)
+        self.tab.tabWidget.setTabEnabled(targets_index, True)
+        self.tab.tabWidget.setCurrentWidget(self.tab.tabTargets)
