@@ -42,7 +42,7 @@ class Mathematics:
         self.COL_RESULT_DEVIATION = 4
 
         self.c = QgsPoint(77, 550, 17)
-        print(f"Point: {self.c.x()}, {self.c.y()}, {self.c.z()}")
+        # print(f"Point: {self.c.x()}, {self.c.y()}, {self.c.z()}")
     from math import sin, cos, tan, atan, radians, degrees
 
 

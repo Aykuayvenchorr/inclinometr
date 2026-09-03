@@ -1,3 +1,4 @@
+from math import sqrt
 import os
 import json
 
@@ -14,7 +15,9 @@ from qgis.core import (
 from qgis.gui import QgsMapToolIdentifyFeature
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QTimer
+from ..settings.TableColumns import TableColumns
 
+IncCol = TableColumns.inclinometry
 
 
 class TabTarget:
@@ -57,9 +60,10 @@ class TabTarget:
 
         # Изменение системы координат
         self.tab.mQgsProjectionSelectionWidgetTarget.crsChanged.connect(self.targetCrsChanged)
-
+        self.tab.btnCalculateDeviations.setEnabled(False)
         # Удалить цель из списка
         self.tab.btnRemoveTarget.clicked.connect(self.deleteTarget)
+        self.tab.btnCalculateDeviations.clicked.connect(self.calculateDeviations)
 
 
     def checkCoordinateMethod(self):
@@ -185,6 +189,9 @@ class TabTarget:
         5 — tvd
         6 - tvdss
         7 - md
+        8 - north_f
+        9 - east_f
+        10 - r_f
 
         Источник координат определяется radio button:
         - map   — геометрия объекта;
@@ -270,6 +277,7 @@ class TabTarget:
         self.crsTableTarget = self.crsCurrentTarget
         QTimer.singleShot(0, self.tab.mQgsProjectionSelectionWidgetTarget.update)
         QTimer.singleShot(0, self.tab.mQgsProjectionSelectionWidgetTarget.repaint)
+        self.tab.btnCalculateDeviations.setEnabled(True)
 
         """
         # ======================================================
@@ -464,8 +472,8 @@ class TabTarget:
         """Пересчет координат в таблице"""
         # QMessageBox.warning(self.tab, "Системы координат", f"Current {self.crsCurrentTarget},\nTable {self.crsTableTarget}")
         # Преобразование
-        print(self.crsTableTarget)
-        print(self.crsCurrentTarget)
+        # print(self.crsTableTarget)
+        # print(self.crsCurrentTarget)
         transform = QgsCoordinateTransform(self.crsTableTarget, self.crsCurrentTarget, QgsProject.instance())
 
         # Пересчитываем все строки таблицы
@@ -520,6 +528,9 @@ class TabTarget:
         # 5 — tvd
         # 6 - tvdss
         # 7 - md
+        # 8 - north_f
+        # 9 - east_f
+        # 10 - r_f
     # ==========================================================
     # ОЧИСТКА
     # ==========================================================
@@ -561,3 +572,123 @@ class TabTarget:
 
         # Сбрасываем выбранную цель
         self.selectedTarget = None
+        if self.tab.tableTargets.rowCount() == 0:
+            self.tab.btnCalculateDeviations.setEnabled(False)
+
+
+    def calculateDeviations(self):
+        if self.tab.mQgsProjectionSelectionWidgetTarget.crs() != self.tab.mQgsProjectionSelectionWidgetWellHead.crs():
+            self.tab.mQgsProjectionSelectionWidgetTarget.blockSignals(True) 
+            self.tab.mQgsProjectionSelectionWidgetTarget.setCrs(self.tab.mQgsProjectionSelectionWidgetWellHead.crs())
+            self.targetCrsChanged(self.tab.mQgsProjectionSelectionWidgetTarget.crs())
+            self.tab.mQgsProjectionSelectionWidgetTarget.blockSignals(False)
+            self.crsTableTarget = self.crsCurrentTarget
+            QTimer.singleShot(0, self.tab.mQgsProjectionSelectionWidgetTarget.update)
+            QTimer.singleShot(0, self.tab.mQgsProjectionSelectionWidgetTarget.repaint)
+
+        for rowTarget in range(self.tab.tableTargets.rowCount()):
+            res = self.calculateCoordsTarget(rowTarget)
+            if res:
+                north_ft, east_ft = res
+                # Фактический Север
+                self.tab.tableTargets.setItem(rowTarget, 8, QtWidgets.QTableWidgetItem(f"{north_ft:.3f}"))
+                # Фактический Восток
+                self.tab.tableTargets.setItem(rowTarget, 9, QtWidgets.QTableWidgetItem(f"{east_ft:.3f}"))
+
+                # Север цели
+                north = float(self.tab.tableTargets.item(rowTarget, 3).text())
+                # Восток цели
+                east = float(self.tab.tableTargets.item(rowTarget, 4).text())
+                # Отклонение
+                deviation = self.calculateRfact(north, east, north_ft, east_ft)
+                # Записываем отклонение
+                self.tab.tableTargets.setItem(rowTarget, 10, QtWidgets.QTableWidgetItem(f"{deviation:.3f}"))
+
+
+    def calculateCoordsTarget(self, rowTarget):
+        """
+        Вычисляет фактические координаты одной цели
+        по таблице инклинометрии.
+
+        rowTarget — номер строки цели в tableTargets.
+        """
+
+        tableTargets = self.tab.tableTargets
+        tableInclin = self.tab.tableInclinometry
+
+        # MD цели
+        mdTargetItem = tableTargets.item(rowTarget, 7)
+
+        if mdTargetItem is None:
+            QMessageBox.warning(self.tab, "Внимание: введите MD цели в таблице целей.")
+            return
+
+        try:
+            mdTarget = float(mdTargetItem.text())
+        except (TypeError, ValueError):
+            return
+
+        # ----------------------------------------
+        # Ищем MD больше или равный MD цели
+        # ----------------------------------------
+
+        rowAfter = None
+        rowBefore = None
+        # print('mdTarget', mdTarget)
+        # print('tableInclin.rowCount()', tableInclin.rowCount())
+
+        for row in range(tableInclin.rowCount()):
+            mdItem = tableInclin.item(row, IncCol["MD"])
+            md = float(mdItem.text())
+            if md < mdTarget:
+                continue
+            if mdTarget == md:
+                rowAfter = row
+                rowBefore = row
+                break
+            # MD инклинометрии больше MD цели
+            rowAfter = row
+            rowBefore = row - 1
+            # print('rowAfter', rowAfter, 'rowBefore', rowBefore)
+            break
+
+        # Не нашли точку с MD >= MD цели
+        if rowAfter is None:
+            QMessageBox.warning(self.tab, "Внимание", "MD цели больше, чем максимальный MD в таблице инклинометрии.")   
+            return
+
+        # Точное совпадение MD
+        if rowBefore == rowAfter:
+
+            north_ft = float(tableInclin.item(rowAfter, IncCol["NORTH"]).text())
+            east_ft = float(tableInclin.item(rowAfter, IncCol["EAST"]).text())
+
+        # Интерполяция между двумя точками
+        else:
+            mdBefore = float(tableInclin.item(rowBefore, IncCol["MD"]).text())
+            northBefore = float(tableInclin.item(rowBefore, IncCol["NORTH"]).text())
+            eastBefore = float(tableInclin.item(rowBefore, IncCol["EAST"]).text())
+
+            mdAfter = float(tableInclin.item(rowAfter, IncCol["MD"]).text())
+            northAfter = float(tableInclin.item(rowAfter, IncCol["NORTH"]).text())
+            eastAfter = float(tableInclin.item(rowAfter, IncCol["EAST"]).text())
+
+            k = ((mdTarget - mdBefore) / (mdAfter - mdBefore))
+            north_ft = (northBefore + k * (northAfter - northBefore))
+            east_ft = (eastBefore + k * (eastAfter - eastBefore))
+
+        return north_ft, east_ft
+
+    def calculateRfact(self, north_t, east_t, north_ft, east_ft):
+        """
+        Рассчитывает горизонтальное отклонение цели
+        от фактической точки.
+
+        north    — Север цели
+        east     — Восток цели
+        north_ft — фактический Север
+        east_ft  — фактический Восток
+        """
+
+        deviation = sqrt((north_t - north_ft) ** 2 + (east_t - east_ft) ** 2)
+        return deviation

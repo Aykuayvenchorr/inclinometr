@@ -199,7 +199,7 @@ class Geodezy:
             declination_rad_old = np.arctan2(Be_old, Bn_old)
             declination_deg_old = np.degrees(declination_rad_old)
             change_per_year = declination_deg_old - declination_deg
-            # print(f'Широта: {lat_deg:.7f} / Долгота: {lon_deg:.7f} / Дата: {dt} / Альтитуда: {alt_m:.7f} / Магсклон: {declination_deg}')
+            # print(f'Широта: {lat_deg:.7f} / Долгота: {lon_deg:.7f} / Дата: {dt} / Альтитуда: {alt_km:.7f} / Магсклон: {declination_deg}')
         else:
             declination_rad = 0.0
             change_per_year = 0.0

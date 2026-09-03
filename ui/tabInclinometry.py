@@ -58,7 +58,8 @@ class TabInclinometry:
         self.tab.cmbAzimuthType.currentIndexChanged.connect(self.onAzimuthTypeChanged)
         # Кнопка расчета инклинометрии
         self.tab.btnCalculateInclinometry.clicked.connect(self.calculateInclinometryAndDeviation)
-        
+        self.tab.btnCalculateInclinometry.setEnabled(False)
+        self.tab.tabInclTargetGoBtn.setEnabled(False)
     
 
     def load_inclinometry(self):
@@ -109,6 +110,10 @@ class TabInclinometry:
                     self.tab.txtErrMagneticAzimuth.setText("0.5/1.0/1.5")
                     self.tab.txtErrZenith.setText("0.5")
                     self.tab.txtErrAzimuth.setText("0.5")
+
+        self.tab.btnCalculateInclinometry.setEnabled(True)
+        self.tab.tabInclTargetGoBtn.setEnabled(False)
+        
 
 
             # # Исходная точка
@@ -286,10 +291,11 @@ class TabInclinometry:
             depth = float(self.tab.tableInclinometry.item(i, IncCol["MD"]).text())
             zenith = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["ZENITH"]).text())) + zenith_error
             azimuth = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["AZIMUTH"]).text())) 
+            dt = self.getRowDate(i)
             # if self.tab.tableInclinometry.item(0, IncCol["DATE"]).text() != "":
             #     dt = datetime.strptime(self.tab.tableInclinometry.item(0, IncCol["DATE"]).text(), "%Y-%m-%d")
             if i > 0:
-                dt = self.getRowDate(i)
+                # dt = self.getRowDate(i)
                 alt = float(self.tab.tableInclinometry.item(i-1, IncCol["TVDSS"]).text())
                 # alt = 0.0 
 
@@ -332,9 +338,9 @@ class TabInclinometry:
                     zenith
                 )
                 if switch == 1:
-                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_NORTH"], QtWidgets.QTableWidgetItem(str(dNorth)))
-                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_EAST"], QtWidgets.QTableWidgetItem(str(dEast)))
-                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_TVDSS"], QtWidgets.QTableWidgetItem(str(dTVDSS)))
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_NORTH"], QtWidgets.QTableWidgetItem(f'{dNorth:.3f}'))
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_EAST"], QtWidgets.QTableWidgetItem(f'{dEast:.3f}'))
+                    self.tab.tableInclinometry.setItem(i, IncCol["DELTA_TVDSS"], QtWidgets.QTableWidgetItem(f'{dTVDSS:.3f}'))
                 north_p += dNorth
                 east_p += dEast
                 alt -= dTVDSS
@@ -348,9 +354,11 @@ class TabInclinometry:
 
             #Вывод промежуточных результатов в таблицу
             if switch == 1:
-                self.tab.tableInclinometry.setItem(i, IncCol["DECLINATION"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(magnetic_declination))))
-                self.tab.tableInclinometry.setItem(i, IncCol["CONVERGENCE"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(gamma))))
-                self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid) % 360.0)))
+                self.tab.tableInclinometry.setItem(i, IncCol["DECLINATION"], QtWidgets.QTableWidgetItem(f'{Geodezy.rad2deg(magnetic_declination):.7f}'))
+                self.tab.tableInclinometry.setItem(i, IncCol["CONVERGENCE"], QtWidgets.QTableWidgetItem(f'{Geodezy.rad2deg(gamma):.7f}'))
+                self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(f'{Geodezy.rad2deg(azimuth_grid) % 360.0:.7f}')))
+
+        self.tab.tabInclTargetGoBtn.setEnabled(True)
 
     def calculateErrorPoints(
         self,
@@ -703,12 +711,11 @@ class TabInclinometry:
         """
         Возвращает дату, действующую для указанной строки.
 
-        Если дата в текущей строке заполнена — используется она.
-
-        Если дата пустая — используется последняя заполненная
-        дата из предыдущих строк.
-
-        Если выше заполненной даты нет — используется текущая дата.
+        Логика:
+        - если в текущей строке есть дата — она становится текущей;
+        - если дата пустая — используется последняя найденная дата выше;
+        - новая дата действует для всех следующих строк,
+        пока не встретится следующая дата.
         """
 
         table = self.tab.tableInclinometry
@@ -716,17 +723,21 @@ class TabInclinometry:
         for current_row in range(row, -1, -1):
             item = table.item(current_row, IncCol["DATE"])
 
-            if item is not None:
-                self.currentDate = datetime.strptime(item.text().strip(), "%Y-%m-%d")
+            if item is None:
+                continue
+
+            date_text = item.text().strip()
+
+            if not date_text:
+                continue
+
+            self.currentDate = datetime.strptime(
+                date_text,
+                "%Y-%m-%d"
+            )
+
+            # ВАЖНО:
+            # нашли ближайшую дату — дальше вверх не идём
+            break
 
         return self.currentDate
-
-
-    # def clearInclinometryTable(self):
-    #     """Полностью очищает таблицу инклинометрии."""
-    #     QMessageBox.warning(
-    #                     self.tab,
-    #                     "Ошибка",
-    #                     "Система координат на вкладке Позиции/Устья должна быть прямоугольной.\nТакже необходимо перезагрузить инклинометрию."
-    #                 )
-    #     table = 

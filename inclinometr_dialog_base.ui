@@ -800,11 +800,11 @@
        <x>10</x>
        <y>271</y>
        <width>561</width>
-       <height>301</height>
+       <height>291</height>
       </rect>
      </property>
      <property name="columnCount">
-      <number>11</number>
+      <number>14</number>
      </property>
      <attribute name="horizontalHeaderCascadingSectionResizes">
       <bool>false</bool>
@@ -847,6 +847,21 @@
      <column>
       <property name="text">
        <string>MD</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Север_факт</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Восток_факт</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>R_факт</string>
       </property>
      </column>
      <column/>
@@ -910,56 +925,16 @@
       </property>
      </widget>
     </widget>
-   </widget>
-   <widget class="QWidget" name="tabDevs">
-    <attribute name="title">
-     <string>Расчет отклонений</string>
-    </attribute>
-    <widget class="QTableWidget" name="tableCalculationDeviation">
+    <widget class="QPushButton" name="btnCalculateDeviations">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="geometry">
       <rect>
-       <x>30</x>
-       <y>80</y>
-       <width>381</width>
-       <height>351</height>
-      </rect>
-     </property>
-     <property name="columnCount">
-      <number>5</number>
-     </property>
-     <column>
-      <property name="text">
-       <string>Глубина</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Цель</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Север</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Восток</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>TVD</string>
-      </property>
-     </column>
-    </widget>
-    <widget class="QPushButton" name="btnCalculateDeviation">
-     <property name="geometry">
-      <rect>
-       <x>30</x>
-       <y>40</y>
-       <width>381</width>
-       <height>28</height>
+       <x>10</x>
+       <y>580</y>
+       <width>558</width>
+       <height>23</height>
       </rect>
      </property>
      <property name="text">
@@ -967,22 +942,6 @@
      </property>
     </widget>
    </widget>
-  </widget>
-  <widget class="QDialogButtonBox" name="btnSelectPoint">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>656</y>
-     <width>156</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
   </widget>
  </widget>
  <customwidgets>
@@ -1003,38 +962,5 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections>
-  <connection>
-   <sender>btnSelectPoint</sender>
-   <signal>accepted()</signal>
-   <receiver>MainInclinometrDialogBase</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>btnSelectPoint</sender>
-   <signal>rejected()</signal>
-   <receiver>MainInclinometrDialogBase</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>
