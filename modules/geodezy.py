@@ -89,7 +89,7 @@ class Geodezy:
         return zone_number
 
     @staticmethod
-    def convergence_meridians(B: float, L: float, zone: int) -> float:
+    def convergence_meridians(B: float, L: float, zone: int, rel: int) -> float:
         """
         Расчет сближения меридианов по формуле Морозова.
 
@@ -107,23 +107,26 @@ class Geodezy:
         float
             Сближение меридианов, радианы
         """
-        a, b = Geodezy.getPulkovo1942EllipsoidParameters()
-        L0 = Geodezy.getCentralMeridian(zone)
+        if rel <= 1:
+            a, b = Geodezy.getPulkovo1942EllipsoidParameters()
+            L0 = Geodezy.getCentralMeridian(zone)
 
-        # Разность долгот
-        l = L - L0
+            # Разность долгот
+            l = L - L0
 
-        # Первый эксцентриситет²
-        #e2 = (a**2 - b**2) / (a**2)
-        # Второй эксцентриситет²
-        es2 = (a**2 - b**2) / (b**2)
-        # η²
-        eta2 = es2 * cos(B) ** 2
+            # Первый эксцентриситет²
+            #e2 = (a**2 - b**2) / (a**2)
+            # Второй эксцентриситет²
+            es2 = (a**2 - b**2) / (b**2)
+            # η²
+            eta2 = es2 * cos(B) ** 2
 
-        # Формула Морозова
-        tg_gamma = (sin(B) * tan(l) + (eta2 * sin(B) * cos(B)**2 * l**3* (1 + (2/3)*eta2 + cos(B)**2 * l**2)))
-        gamma = atan(tg_gamma)
-        return gamma
+            # Формула Морозова
+            tg_gamma = (sin(B) * tan(l) + (eta2 * sin(B) * cos(B)**2 * l**3* (1 + (2/3)*eta2 + cos(B)**2 * l**2)))
+            gamma = atan(tg_gamma)
+            return gamma
+        else:
+            return 0.0
 
     @staticmethod
     def azimuth_true_2_grid(azimuth_true: float, convergence_meridians: float) -> float:
@@ -150,7 +153,7 @@ class Geodezy:
         return azimuth_grid
     
     @staticmethod
-    def magnetic_declination(lat_rad: float, lon_rad: float, alt_m: float, dt: datetime) -> float:
+    def magnetic_declination(lat_rad: float, lon_rad: float, alt_km: float, dt: datetime, rel: int) -> float:
         """
         Расчет магнитного склонения по модели IGRF.
 
@@ -170,31 +173,37 @@ class Geodezy:
         float
             Магнитное склонение, радианы
         """
-        # Переводим радианы в градусы для IGRF
-        lat_deg = degrees(lat_rad)
-        lon_deg = degrees(lon_rad)
-        # Расчет компонентов напряженности магнитного поля Восток, Север, Нормальное (вверх)
-        Be, Bn, Bu = ppigrf.igrf(lon=lon_deg, lat=lat_deg, h=alt_m, date=dt)
 
-        # Полная напряженность
-        total = np.sqrt(Bn**2 + Be**2 + Bu**2)
+        if rel == 0:
+            # Переводим радианы в градусы для IGRF
+            lat_deg = degrees(lat_rad)
+            lon_deg = degrees(lon_rad)
+            # Расчет компонентов напряженности магнитного поля Восток, Север, Нормальное (вверх)
+            Be, Bn, Bu = ppigrf.igrf(lon=lon_deg, lat=lat_deg, h=alt_km, date=dt)
 
-        # Магнитное склонение (в радианах)
-        declination_rad = np.arctan2(Be, Bn)    # arctan2(Восток, Север)
-        declination_deg = np.degrees(declination_rad)
+            # Полная напряженность
+            total = np.sqrt(Bn**2 + Be**2 + Bu**2)
 
-        # Магнитное наклонение
-        horizontal = np.sqrt(Bn**2 + Be**2)
-        inclination_rad = np.arctan2(Bu, horizontal)
-        inclination_deg = np.degrees(inclination_rad)
+            # Магнитное склонение (в радианах)
+            declination_rad = np.arctan2(Be, Bn)    # arctan2(Восток, Север)
+            declination_deg = np.degrees(declination_rad)
 
-        # Вычисление изменения магнитного склонения в год
-        date_old = datetime(dt.year - 1, dt.month, dt.day)
-        Be_old, Bn_old, Bu_old = ppigrf.igrf(lon=lon_deg, lat=lat_deg, h=alt_m, date=date_old)
-        declination_rad_old = np.arctan2(Be_old, Bn_old)
-        declination_deg_old = np.degrees(declination_rad_old)
-        change_per_year = declination_deg_old - declination_deg
-        
+            # Магнитное наклонение
+            horizontal = np.sqrt(Bn**2 + Be**2)
+            inclination_rad = np.arctan2(Bu, horizontal)
+            inclination_deg = np.degrees(inclination_rad)
+
+            # Вычисление изменения магнитного склонения в год
+            date_old = datetime(dt.year - 1, dt.month, dt.day)
+            Be_old, Bn_old, Bu_old = ppigrf.igrf(lon=lon_deg, lat=lat_deg, h=alt_km, date=date_old)
+            declination_rad_old = np.arctan2(Be_old, Bn_old)
+            declination_deg_old = np.degrees(declination_rad_old)
+            change_per_year = declination_deg_old - declination_deg
+            # print(f'Широта: {lat_deg:.7f} / Долгота: {lon_deg:.7f} / Дата: {dt} / Альтитуда: {alt_m:.7f} / Магсклон: {declination_deg}')
+        else:
+            declination_rad = 0.0
+            change_per_year = 0.0
+
         return declination_rad
 
     @staticmethod

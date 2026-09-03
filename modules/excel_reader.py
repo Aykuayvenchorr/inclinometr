@@ -27,9 +27,9 @@ class ExcelReader:
         """
         Чтение таблицы инклинометрии.
 
-        A18 -> Глубина по стволу, м
-        B18 -> Зенитный угол, град
-        D18 -> Азимут, град
+        A0 -> Глубина по стволу, м
+        B0 -> Зенитный угол, град
+        C0 -> Азимут, град
         """
 
         workbook = load_workbook(
@@ -39,7 +39,7 @@ class ExcelReader:
 
         sheet = workbook.active        
 
-        row = 18        # Номер строки, с которой начинаются данные
+        row = 2        # Номер строки, с которой начинаются данные
 
         while True:
 
@@ -50,7 +50,7 @@ class ExcelReader:
                 break
 
             zenith = sheet[f"B{row}"].value
-            azimuth = sheet[f"D{row}"].value
+            azimuth = sheet[f"C{row}"].value
 
             self.data.append({
                 "md": float(md),

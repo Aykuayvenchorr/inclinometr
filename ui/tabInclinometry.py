@@ -37,6 +37,7 @@ class TabInclinometry:
         self.alt = 0.0
         self.gamma = 0.0
         self.rows = 0
+        self.currentDate = ''
         self.inclinometry = Inclinometry()
 
         # Загрузка инклинометрии из Excel
@@ -57,7 +58,7 @@ class TabInclinometry:
         self.tab.cmbAzimuthType.currentIndexChanged.connect(self.onAzimuthTypeChanged)
         # Кнопка расчета инклинометрии
         self.tab.btnCalculateInclinometry.clicked.connect(self.calculateInclinometryAndDeviation)
-
+        
     
 
     def load_inclinometry(self):
@@ -68,6 +69,17 @@ class TabInclinometry:
         if not filename:
             return
 
+        # Очищаем таблицу перед загрузкой
+        table = self.tab.tableInclinometry
+        table.clearContents()
+        table.setRowCount(0)
+        self.excel.data.clear()
+        # table.update()
+        # table.viewport().update()
+        # QtWidgets.QApplication.processEvents()
+        # for i in range(table.rowCount()):
+        #     table.removeRow(0)
+        
         # Чтение данных из Excel
         self.excel.read_inclinometry(filename)
 
@@ -89,6 +101,14 @@ class TabInclinometry:
                 self.east_p = float(self.tab.txtWellHeadEast.text())
                 self.tab.tableInclinometry.setItem(row, IncCol["TVDSS"], QtWidgets.QTableWidgetItem(self.tab.txtWellHeadRotor.text()))
                 self.alt = float(self.tab.txtWellHeadRotor.text())
+
+                # ===============================================
+                # Указание погрешности модели IGRF
+                # ===============================================
+                if self.tab.cmbAzimuthType.currentIndex() == 0:  # Магнитный
+                    self.tab.txtErrMagneticAzimuth.setText("0.5/1.0/1.5")
+                    self.tab.txtErrZenith.setText("0.5")
+                    self.tab.txtErrAzimuth.setText("0.5")
 
 
             # # Исходная точка
@@ -163,6 +183,21 @@ class TabInclinometry:
         # Пересчет
         geographicPoint = transform.transform(sourcePoint)
         return geographicPoint
+
+    def formatTargetCoordinates(self, point):
+        """
+        Форматирует координаты в зависимости от CRS.
+        """
+
+        if self.crsCurrentTarget.isGeographic():
+            northText = f"{point.y():.10f}"
+            eastText = f"{point.x():.10f}"
+        else:
+            northText = f"{point.y():.3f}"
+            eastText = f"{point.x():.3f}"
+
+        return northText, eastText
+
 
     def calculateInclinometry(
             self,
@@ -240,17 +275,23 @@ class TabInclinometry:
         north_p: float = float(self.tab.tableInclinometry.item(0, IncCol["NORTH"]).text())
         east_p: float = float(self.tab.tableInclinometry.item(0, IncCol["EAST"]).text())
         alt: float = float(self.tab.tableInclinometry.item(0, IncCol["TVDSS"]).text())
+        # alt: float = 0.0
 
         depth_prev: float = 0.0
         zenith_prev: float = 0.0
         azimuth_grid_prev: float = 0.0
+        self.currentDate = datetime.strptime(self.tab.tableInclinometry.item(0, IncCol["DATE"]).text(), "%Y-%m-%d")
 
         for i in range(self.rows):
             depth = float(self.tab.tableInclinometry.item(i, IncCol["MD"]).text())
             zenith = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["ZENITH"]).text())) + zenith_error
             azimuth = Geodezy.deg2rad(float(self.tab.tableInclinometry.item(i, IncCol["AZIMUTH"]).text())) 
-            if self.tab.tableInclinometry.item(0, IncCol["DATE"]).text() != "":
-                dt = datetime.strptime(self.tab.tableInclinometry.item(0, IncCol["DATE"]).text(), "%Y-%m-%d")
+            # if self.tab.tableInclinometry.item(0, IncCol["DATE"]).text() != "":
+            #     dt = datetime.strptime(self.tab.tableInclinometry.item(0, IncCol["DATE"]).text(), "%Y-%m-%d")
+            if i > 0:
+                dt = self.getRowDate(i)
+                alt = float(self.tab.tableInclinometry.item(i-1, IncCol["TVDSS"]).text())
+                # alt = 0.0 
 
             # Магнитное склонение
             if self.AzimuthType < 1:
@@ -258,9 +299,11 @@ class TabInclinometry:
                 magnetic_declination = Geodezy.magnetic_declination(
                     Geodezy.deg2rad(pointWGS84.y()),
                     Geodezy.deg2rad(pointWGS84.x()),
-                    alt,
-                    dt
+                    alt/1000.0,
+                    dt,
+                    self.tab.cmbAzimuthType.currentIndex()
                 )[0]
+                # print(f'Широта: {pointWGS84.y():.7f} / Долгота: {pointWGS84.x():.7f} / Дата: {dt} / Альтитуда: {alt:.3f} / CurrentIndex: {self.tab.cmbAzimuthType.currentIndex()} / Магскл: {magnetic_declination}')
             
 
             # Сближение меридианов
@@ -269,12 +312,13 @@ class TabInclinometry:
                 gamma = Geodezy.convergence_meridians(
                     Geodezy.deg2rad(pointPulkovo42.y()),
                     Geodezy.deg2rad(pointPulkovo42.x()),
-                    Geodezy.getZoneNumberFromEast(east_p)
+                    Geodezy.getZoneNumberFromEast(east_p),
+                    self.tab.cmbAzimuthType.currentIndex()
                 )
             
 
             # Дирекционный угол
-            azimuth_grid = azimuth + magnetic_declination + gamma + azimuth_error + magnetic_azimuth_error
+            azimuth_grid = azimuth + magnetic_declination + gamma # + azimuth_error + magnetic_azimuth_error
             
 
             # РАСЧЕТ
@@ -294,9 +338,9 @@ class TabInclinometry:
                 north_p += dNorth
                 east_p += dEast
                 alt -= dTVDSS
-                self.tab.tableInclinometry.setItem(i, north_col, QtWidgets.QTableWidgetItem(str(north_p)))
-                self.tab.tableInclinometry.setItem(i, east_col, QtWidgets.QTableWidgetItem(str(east_p)))
-                self.tab.tableInclinometry.setItem(i, tvdss_col, QtWidgets.QTableWidgetItem(str(alt)))
+                self.tab.tableInclinometry.setItem(i, north_col, QtWidgets.QTableWidgetItem(str(f"{north_p:.3f}")))
+                self.tab.tableInclinometry.setItem(i, east_col, QtWidgets.QTableWidgetItem(str(f"{east_p:.3f}")))
+                self.tab.tableInclinometry.setItem(i, tvdss_col, QtWidgets.QTableWidgetItem(str(f"{alt:.3f}")))
 
                 depth_prev = depth
                 zenith_prev = zenith
@@ -306,12 +350,12 @@ class TabInclinometry:
             if switch == 1:
                 self.tab.tableInclinometry.setItem(i, IncCol["DECLINATION"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(magnetic_declination))))
                 self.tab.tableInclinometry.setItem(i, IncCol["CONVERGENCE"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(gamma))))
-                self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid))))
+                self.tab.tableInclinometry.setItem(i, IncCol["GRID_AZIMUTH"], QtWidgets.QTableWidgetItem(str(Geodezy.rad2deg(azimuth_grid) % 360.0)))
 
     def calculateErrorPoints(
         self,
         zenith_error: float,
-        magnetic_azimuth_error: float,
+        # magnetic_azimuth_error: float,
         azimuth_error: float
     ):
         """
@@ -335,6 +379,15 @@ class TabInclinometry:
 
         # Начинаем со второй строки
         for i in range(1, self.rows):
+
+            dt = self.getRowDate(i)
+            # =========================================================
+            # Погрешность магнитного склонения
+            # =========================================================
+
+            magnetic_azimuth_error = Geodezy.deg2rad(
+                self.currentErrorDeclination(dt)
+            )
 
             # =========================================================
             # Предыдущая точка
@@ -548,6 +601,17 @@ class TabInclinometry:
             # print("ERR_M:", magnetic_azimuth_error)
 
     def calculateInclinometryAndDeviation(self):
+        """Расчет траектории скважины и эллипса неопределенности
+        с последующим заполнением таблицы tableInclinometry."""
+        # Система координат на устье, принимаемая для расчета, прямоугольная
+        if self.tab.mQgsProjectionSelectionWidgetWellHead.crs().isGeographic():
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Система координат на вкладке Позиции/Устья должна быть прямоугольной.\nТакже необходимо перезагрузить инклинометрию."
+            )
+            return
+
         self.calculateInclinometry(
             zenith_error=0.0,
             magnetic_azimuth_error=0.0,
@@ -559,7 +623,7 @@ class TabInclinometry:
         )
         self.calculateErrorPoints(
             zenith_error=Geodezy.deg2rad(float(self.tab.txtErrZenith.text())),
-            magnetic_azimuth_error=Geodezy.deg2rad(float(self.tab.txtErrMagneticAzimuth.text())),
+            # magnetic_azimuth_error=Geodezy.deg2rad(self.currentErrorDeclination(dt)),
             azimuth_error=Geodezy.deg2rad(float(self.tab.txtErrAzimuth.text()))
         )
 
@@ -608,3 +672,61 @@ class TabInclinometry:
         targets_index = self.tab.tabWidget.indexOf(self.tab.tabTargets)
         self.tab.tabWidget.setTabEnabled(targets_index, True)
         self.tab.tabWidget.setCurrentWidget(self.tab.tabTargets)
+
+    def currentErrorDeclination(self, dt: datetime) -> float:
+        """
+        Возвращает принятую погрешность магнитного склонения
+        в градусах в зависимости от даты.
+
+        Значения берутся из txtErrMagneticAzimuth:
+            до 2025 года       → первое значение
+            2025–2030          → второе значение
+            после 2030 года    → третье значение
+        """
+
+        errors = self.tab.txtErrMagneticAzimuth.text().strip()
+
+        error_values = [
+            float(value.strip())
+            for value in errors.split("/")
+        ]
+
+        if dt < datetime(2025, 1, 1):
+            return error_values[0]
+
+        if dt < datetime(2030, 1, 1):
+            return error_values[1]
+
+        return error_values[2]
+
+    def getRowDate(self, row: int) -> datetime:
+        """
+        Возвращает дату, действующую для указанной строки.
+
+        Если дата в текущей строке заполнена — используется она.
+
+        Если дата пустая — используется последняя заполненная
+        дата из предыдущих строк.
+
+        Если выше заполненной даты нет — используется текущая дата.
+        """
+
+        table = self.tab.tableInclinometry
+
+        for current_row in range(row, -1, -1):
+            item = table.item(current_row, IncCol["DATE"])
+
+            if item is not None:
+                self.currentDate = datetime.strptime(item.text().strip(), "%Y-%m-%d")
+
+        return self.currentDate
+
+
+    # def clearInclinometryTable(self):
+    #     """Полностью очищает таблицу инклинометрии."""
+    #     QMessageBox.warning(
+    #                     self.tab,
+    #                     "Ошибка",
+    #                     "Система координат на вкладке Позиции/Устья должна быть прямоугольной.\nТакже необходимо перезагрузить инклинометрию."
+    #                 )
+    #     table = 
