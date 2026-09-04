@@ -96,7 +96,7 @@ class Inclinometry:
             dl
             * cos(zenith_mean)
         )
-
+        # print(f'Метод среднего угла: ср.азимут {azimuth_mean} / ср.зенит {zenith_mean}')
         return dNorth, dEast, dZ
 
     # def method_mean_angle(self, dl: float, azimuth_grid_start: float, azimuth_grid_end: float, zenith_start: float, zenith_end: float) -> tuple[float, float, float]:
