@@ -424,6 +424,9 @@ class TabTarget:
 
 
     def calculateDeviations(self):
+        self.layerTarget.updateFields()
+        self.layerTarget.updateExtents()
+        self.layerTarget.triggerRepaint()
         if self.tab.mQgsProjectionSelectionWidgetTarget.crs() != self.tab.mQgsProjectionSelectionWidgetWellHead.crs():
             self.tab.mQgsProjectionSelectionWidgetTarget.blockSignals(True) 
             self.tab.mQgsProjectionSelectionWidgetTarget.setCrs(self.tab.mQgsProjectionSelectionWidgetWellHead.crs())
@@ -452,6 +455,7 @@ class TabTarget:
                 deviation = self.calculateRfact(north, east, north_ft, east_ft)
                 # Записываем отклонение
                 self.tab.tableTargets.setItem(rowTarget, 10, QtWidgets.QTableWidgetItem(f"{deviation:.3f}"))
+                self.addActualTargetToLayer(rowTarget, north_ft, east_ft, tvdss_ft)
 
 
     def calculateCoordsTarget(self, rowTarget):
@@ -515,6 +519,7 @@ class TabTarget:
 
             north_ft = float(tableInclin.item(rowAfter, IncCol["NORTH"]).text())
             east_ft = float(tableInclin.item(rowAfter, IncCol["EAST"]).text())
+            tvdss_ft = float(tableInclin.item(rowAfter, IncCol["TVDSS"]).text())
 
         # Интерполяция между двумя точками
         else:
@@ -533,8 +538,6 @@ class TabTarget:
             north_ft = (northBefore + k * (northAfter - northBefore))
             east_ft = (eastBefore + k * (eastAfter - eastBefore))
             tvdss_ft = (tvdssBefore + k * (tvdssAfter - tvdssBefore))
-
-        self.addActualTargetToLayer(rowTarget, north_ft, east_ft, tvdss_ft)
 
         return north_ft, east_ft, tvdss_ft
 
@@ -565,7 +568,9 @@ class TabTarget:
         """
 
         tableTargets = self.tab.tableTargets
-        layer_target = self.layerTarget
+        layer_target = self.tab.tabSettingsTargetsMLCBox.currentLayer()
+        layer_target.updateFields()
+        layer_target.updateExtents()
 
         # ==========================================
         # 1. Получаем ID цели из tableTargets
@@ -603,7 +608,7 @@ class TabTarget:
         # ==========================================
 
         request = QgsFeatureRequest().setFilterExpression(
-            f'"id" = {target_id}'
+            f'"id" = {target_id} AND "type" IN (0, 1)'
         )
 
         source_target = next(
@@ -770,15 +775,32 @@ class TabTarget:
         )
 
         if not success:
+
+            provider_error = layer_target.dataProvider().error().message()
+
+            print("========================================")
+            print("ОШИБКА ДОБАВЛЕНИЯ ФАКТИЧЕСКОЙ ЦЕЛИ")
+            print("Слой:", layer_target.name())
+            print("ID:", actualTarget["id"])
+            print("type:", actualTarget["type"])
+            print("north:", actualTarget["north"])
+            print("east:", actualTarget["east"])
+            print("tvdss:", actualTarget["tvdss"])
+            print("Геометрия:", actualTarget.geometry().asWkt())
+            print("Ошибка provider:", provider_error)
+            print("========================================")
+
             layer_target.rollBack()
 
             QMessageBox.warning(
                 self.tab,
                 "Ошибка",
-                "Не удалось добавить фактическую "
-                "цель в слой welltarget."
+                "Не удалось добавить фактическую цель "
+                "в слой welltarget.\n\n"
+                f"Ошибка:\n{provider_error}"
             )
-            return
+
+            return False
 
         # ==========================================
         # 13. Сохраняем изменения

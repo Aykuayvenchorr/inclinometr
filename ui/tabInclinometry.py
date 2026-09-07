@@ -770,87 +770,43 @@ class TabInclinometry:
 
         table = self.tab.tableInclinometry
 
-        # ==========================================================
         # 1. Проверяем наличие точек
-        # ==========================================================
-
         if self.rows < 2:
             QMessageBox.warning(
                 self.tab,
                 "Внимание",
-                "Для построения ствола необходимо минимум две "
-                "точки инклинометрии."
+                "Для построения ствола необходимо минимум две точки инклинометрии."
             )
             return False
 
-        # ==========================================================
         # 2. Получаем слой wellbore
-        # ==========================================================
-
         layer_wellbore = None
 
         for layer in QgsProject.instance().mapLayers().values():
 
-            if (
-                isinstance(layer, QgsVectorLayer)
-                and layer.name() == self.tab.tabSettingsBoresMLCBox.currentText()
-            ):
+            if (isinstance(layer, QgsVectorLayer)
+                and layer.name() == self.tab.tabSettingsBoresMLCBox.currentText()):
                 layer_wellbore = layer
                 break
 
-        # Если через ComboBox не нашли — ищем по типу линии
         if layer_wellbore is None:
-
-            for layer in QgsProject.instance().mapLayers().values():
-
-                if not isinstance(layer, QgsVectorLayer):
-                    continue
-
-                if layer.geometryType() != QgsWkbTypes.LineGeometry:
-                    continue
-
-                if layer.name() == "wellbore":
-                    layer_wellbore = layer
-                    break
-
-        if layer_wellbore is None:
-
-            QMessageBox.warning(
-                self.tab,
-                "Внимание",
-                "Слой wellbore не найден в проекте."
-            )
+            QMessageBox.warning(self.tab, "Внимание", "Слой wellbore не найден в проекте.")
             return False
 
-        # ==========================================================
         # 3. Проверяем CRS
-        # ==========================================================
 
         crs_calculation = self.crs
         crs_layer = layer_wellbore.crs()
 
         if not crs_calculation.isValid():
-
-            QMessageBox.warning(
-                self.tab,
-                "Ошибка",
-                "Не определена система координат расчёта."
-            )
+            QMessageBox.warning(self.tab, "Ошибка", "Не определена система координат расчёта.")
             return False
 
         if not crs_layer.isValid():
-
-            QMessageBox.warning(
-                self.tab,
-                "Ошибка",
-                "Не определена система координат слоя wellbore."
-            )
+            QMessageBox.warning(self.tab, "Ошибка", "Не определена система координат слоя wellbore.")
             return False
 
-        # ==========================================================
         # 4. Формируем точки траектории
-        # ==========================================================
-
         points = []
 
         for row in range(self.rows):
@@ -860,14 +816,6 @@ class TabInclinometry:
             east_item = table.item(row, IncCol["EAST"])
             tvdss_item = table.item(row, IncCol["TVDSS"])
 
-            if (
-                md_item is None
-                or north_item is None
-                or east_item is None
-                or tvdss_item is None
-            ):
-                continue
-
             try:
                 north = float(north_item.text())
                 east = float(east_item.text())
@@ -876,11 +824,9 @@ class TabInclinometry:
             except ValueError:
                 continue
 
-            # ======================================================
             # X = East
             # Y = North
             # Z = TVDSS
-            # ======================================================
 
             point = QgsPoint(
                 east,
@@ -890,35 +836,20 @@ class TabInclinometry:
 
             points.append(point)
 
-        # ==========================================================
         # 5. Проверяем количество точек
-        # ==========================================================
-
         if len(points) < 2:
-
-            QMessageBox.warning(
-                self.tab,
-                "Внимание",
-                "Не удалось получить достаточное количество "
-                "расчётных точек для построения ствола."
-            )
+            QMessageBox.warning(self.tab, "Внимание", "Не удалось получить достаточное количество расчётных точек для построения ствола.")
             return False
 
-        # ==========================================================
         # 6. Создаём 3D линию
-        # ==========================================================
 
         line = QgsLineString(points)
-
         geometry = QgsGeometry(line)
 
-        # ==========================================================
         # 7. Преобразуем CRS
-        #
         # ВАЖНО:
         # QgsCoordinateTransform работает с XY.
         # Поэтому Z (TVDSS) сохраняется.
-        # ==========================================================
 
         if crs_calculation != crs_layer:
 
@@ -930,33 +861,35 @@ class TabInclinometry:
 
             geometry.transform(transform)
 
-        # ==========================================================
         # 8. Удаляем предыдущий фактический ствол
-        # ==========================================================
-
         layer_wellbore.startEditing()
 
-        layer_wellbore.deleteFeatures(
-            [feature.id() for feature in layer_wellbore.getFeatures()]
-        )
+        # layer_wellbore.deleteFeatures(
+        #     [feature.id() for feature in layer_wellbore.getFeatures()]
+        # )
 
-        # ==========================================================
         # 9. Создаём новый объект
-        # ==========================================================
 
         feature = QgsFeature(layer_wellbore.fields())
-
         feature.setGeometry(geometry)
 
-        # ==========================================================
         # 10. Заполняем атрибуты
-        # ==========================================================
 
         # id
         id_index = layer_wellbore.fields().indexOf("id")
 
         if id_index >= 0:
-            feature["id"] = 1
+            ids = []
+
+            for existing_feature in layer_wellbore.getFeatures():
+                value = existing_feature["id"]
+                if value is not None:
+                    try:
+                        ids.append(int(value))
+                    except (TypeError, ValueError):
+                        pass
+
+            feature["id"] = max(ids, default=0) + 1
 
         # type
         type_index = layer_wellbore.fields().indexOf("type")
@@ -976,6 +909,16 @@ class TabInclinometry:
 
         if rel_index >= 0:
             feature["rel"] = True
+
+        # # wellhead_id
+        # wellhead_id_index = layer_wellbore.fields().indexOf("wellhead_id")
+
+        # if wellhead_id_index >= 0:
+        #     wellhead = getattr(self.tab, "selectedWellHead", None)
+        #     wellhead_id = wellhead["id"]
+
+        #     if wellhead_id is not None:
+        #         feature["wellhead_id"] = wellhead_id
 
         # ==========================================================
         # 11. Добавляем объект

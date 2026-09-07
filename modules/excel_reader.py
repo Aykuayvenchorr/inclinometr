@@ -64,32 +64,3 @@ class ExcelReader:
 
 
         return self.data
-    
-    
-    # def fill_table(self):
-    #     table = self.dialog.tableInclinometry
-    #     table.setRowCount(0)
-    #     for row_data in self.data:
-    #         row = table.rowCount()
-    #         table.insertRow(row)
-    #         table.setItem(
-    #             row,
-    #             0,
-    #             QtWidgets.QTableWidgetItem(
-    #                 f"{row_data['md']:.2f}"
-    #             )
-    #         )
-    #         table.setItem(
-    #             row,
-    #             1,
-    #             QtWidgets.QTableWidgetItem(
-    #                 f"{row_data['zenith']:.2f}"
-    #             )
-    #         )
-    #         table.setItem(
-    #             row,
-    #             2,
-    #             QtWidgets.QTableWidgetItem(
-    #                 f"{row_data['azimuth']:.2f}"
-    #             )
-    #         )
