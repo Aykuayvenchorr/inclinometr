@@ -10,6 +10,9 @@ from qgis.core import (
     QgsPointXY,
     QgsProject,
     QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsGeometry,
 )
 
 from qgis.gui import QgsMapToolIdentifyFeature
@@ -279,119 +282,6 @@ class TabTarget:
         QTimer.singleShot(0, self.tab.mQgsProjectionSelectionWidgetTarget.repaint)
         self.tab.btnCalculateDeviations.setEnabled(True)
 
-        """
-        # ======================================================
-        # CRS, в которую переводим координаты
-        # ======================================================
-
-        if self.crsOutputTarget is None:
-            self.crsOutputTarget = crs_source
-
-        crs_output = self.crsOutputTarget
-
-        # ======================================================
-        # Устанавливаем CRS в ComboBox
-        #
-        # Только если это первая выбранная цель.
-        #
-        # При последующих целях не меняем CRS пользователя.
-        # ======================================================
-
-        
-
-        # ======================================================
-        # Преобразуем координаты
-        # ======================================================
-
-        transform = QgsCoordinateTransform(
-            crs_source,
-            crs_output,
-            QgsProject.instance()
-        )
-
-        try:
-
-            target_point = transform.transform(
-                QgsPointXY(
-                    east,
-                    north
-                )
-            )
-
-        except Exception as e:
-
-            QMessageBox.warning(
-                self.tab,
-                "Ошибка преобразования",
-                f"Не удалось преобразовать координаты:\n{e}"
-            )
-            return
-
-        # ======================================================
-        # Добавляем строку
-        # ======================================================
-
-        row = self.tab.tableTargets.rowCount()
-
-        self.tab.tableTargets.insertRow(row)
-
-        # ======================================================
-        # ID
-        # ======================================================
-
-        self.tab.tableTargets.setItem(
-            row,
-            0,
-            QtWidgets.QTableWidgetItem(
-                str(feature["id"])
-            )
-        )
-
-        # ======================================================
-        # Координаты
-        # ======================================================
-
-        northText, eastText = self.formatTargetCoordinates(
-            target_point
-        )
-
-        self.tab.tableTargets.setItem(
-            row,
-            1,
-            QtWidgets.QTableWidgetItem(
-                northText
-            )
-        )
-
-        self.tab.tableTargets.setItem(
-            row,
-            2,
-            QtWidgets.QTableWidgetItem(
-                eastText
-            )
-        )
-
-        # ======================================================
-        # Depth
-        # ======================================================
-
-        depth = feature["depth"]
-
-        self.tab.tableTargets.setItem(
-            row,
-            3,
-            QtWidgets.QTableWidgetItem(
-                "" if depth is None else str(depth)
-            )
-        )
-
-        # ======================================================
-        # Запоминаем CRS координат таблицы
-        # ======================================================
-
-        self.crsCurrentTarget = crs_output
-
-        """
 
 
     def formatTargetCoordinates(self, point):
@@ -420,60 +310,17 @@ class TabTarget:
 
         if crs is None or not crs.isValid():
             return
-        
-        # Если CRS ещё не была установлена
-        # if self.crsCurrentTarget is None:
-        #     self.crsOutputTarget = crs
-        #     self.crsCurrentTarget = crs
-        #     return
 
         # Если CRS не изменилась
         if crs == self.crsCurrentTarget:
             return
 
-        # # Сохраняем старую CRS
-        # oldCrs = self.crsOutputTarget
-
-        # # Новая CRS
-        # newCrs = crs
-
-        # # Если таблица пустая — пересчитывать нечего
-        # if self.tab.tableTargets.rowCount() == 0:
-        #     self.crsOutputTarget = newCrs
-        #     return
-
-        # self.crsCurrentTarget = self.tab.mQgsProjectionSelectionWidgetTarget.crs()
         self.crsCurrentTarget = crs
         self.transformCoordinatesInTable()
 
 
-        # # Пересчитываем все строки таблицы
-        # for row in range(self.tab.tableTargets.rowCount()):
-        #     northItem = self.tab.tableTargets.item(row, 1)
-        #     eastItem = self.tab.tableTargets.item(row, 2)
-        #     if northItem is None or eastItem is None:
-        #         continue
-
-        #     try:
-        #         north = float(northItem.text())
-        #         east = float(eastItem.text())
-        #     except (TypeError, ValueError):
-        #         continue
-
-        #     # Записываем обратно
-        #     northItem.setText(northText)
-        #     eastItem.setText(eastText)
-
-        # # Запоминаем CRS, в которой теперь находятся координаты таблицы
-        # self.crsOutputTarget = newCrs
-
-
     def transformCoordinatesInTable(self):
         """Пересчет координат в таблице"""
-        # QMessageBox.warning(self.tab, "Системы координат", f"Current {self.crsCurrentTarget},\nTable {self.crsTableTarget}")
-        # Преобразование
-        # print(self.crsTableTarget)
-        # print(self.crsCurrentTarget)
         transform = QgsCoordinateTransform(self.crsTableTarget, self.crsCurrentTarget, QgsProject.instance())
 
         # Пересчитываем все строки таблицы
@@ -589,11 +436,13 @@ class TabTarget:
         for rowTarget in range(self.tab.tableTargets.rowCount()):
             res = self.calculateCoordsTarget(rowTarget)
             if res:
-                north_ft, east_ft = res
+                north_ft, east_ft, tvdss_ft = res
                 # Фактический Север
                 self.tab.tableTargets.setItem(rowTarget, 8, QtWidgets.QTableWidgetItem(f"{north_ft:.3f}"))
                 # Фактический Восток
                 self.tab.tableTargets.setItem(rowTarget, 9, QtWidgets.QTableWidgetItem(f"{east_ft:.3f}"))
+                # Фактический TVDSS
+                self.tab.tableTargets.setItem(rowTarget, 11, QtWidgets.QTableWidgetItem(f"{tvdss_ft:.3f}"))
 
                 # Север цели
                 north = float(self.tab.tableTargets.item(rowTarget, 3).text())
@@ -620,7 +469,11 @@ class TabTarget:
         mdTargetItem = tableTargets.item(rowTarget, 7)
 
         if mdTargetItem is None:
-            QMessageBox.warning(self.tab, "Внимание: введите MD цели в таблице целей.")
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Введите MD цели в таблице целей."
+            )            
             return
 
         try:
@@ -668,16 +521,22 @@ class TabTarget:
             mdBefore = float(tableInclin.item(rowBefore, IncCol["MD"]).text())
             northBefore = float(tableInclin.item(rowBefore, IncCol["NORTH"]).text())
             eastBefore = float(tableInclin.item(rowBefore, IncCol["EAST"]).text())
+            tvdssBefore = float(tableInclin.item(rowBefore, IncCol["TVDSS"]).text())
+
 
             mdAfter = float(tableInclin.item(rowAfter, IncCol["MD"]).text())
             northAfter = float(tableInclin.item(rowAfter, IncCol["NORTH"]).text())
             eastAfter = float(tableInclin.item(rowAfter, IncCol["EAST"]).text())
+            tvdssAfter = float(tableInclin.item(rowAfter, IncCol["TVDSS"]).text())
 
             k = ((mdTarget - mdBefore) / (mdAfter - mdBefore))
             north_ft = (northBefore + k * (northAfter - northBefore))
             east_ft = (eastBefore + k * (eastAfter - eastBefore))
+            tvdss_ft = (tvdssBefore + k * (tvdssAfter - tvdssBefore))
 
-        return north_ft, east_ft
+        self.addActualTargetToLayer(rowTarget, north_ft, east_ft, tvdss_ft)
+
+        return north_ft, east_ft, tvdss_ft
 
     def calculateRfact(self, north_t, east_t, north_ft, east_ft):
         """
@@ -692,3 +551,253 @@ class TabTarget:
 
         deviation = sqrt((north_t - north_ft) ** 2 + (east_t - east_ft) ** 2)
         return deviation
+
+    def addActualTargetToLayer(self, source_row, north_f, east_f, tvdss_f):
+        """
+        Добавляет рассчитанную фактическую цель
+        в слой welltarget на основе проектной цели.
+
+        ID исходной цели берётся из столбца 0 tableTargets.
+
+        Типы:
+            0 - Кровля проект -> 2 - Кровля факт
+            1 - Подошва проект -> 3 - Подошва факт
+        """
+
+        tableTargets = self.tab.tableTargets
+        layer_target = self.layerTarget
+
+        # ==========================================
+        # 1. Получаем ID цели из tableTargets
+        # ==========================================
+
+        id_item = tableTargets.item(source_row, 0)
+
+        if id_item is None or not id_item.text().strip():
+            return
+
+        try:
+            target_id = int(id_item.text())
+        except (TypeError, ValueError):
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Некорректный ID цели."
+            )
+            return
+
+        # ==========================================
+        # 2. Проверяем слой welltarget
+        # ==========================================
+
+        if layer_target is None or not layer_target.isValid():
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Слой целей welltarget не найден."
+            )
+            return
+
+        # ==========================================
+        # 3. Ищем исходную цель по ID
+        # ==========================================
+
+        request = QgsFeatureRequest().setFilterExpression(
+            f'"id" = {target_id}'
+        )
+
+        source_target = next(
+            layer_target.getFeatures(request),
+            None
+        )
+
+        if source_target is None:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                f"Цель с ID {target_id} не найдена "
+                f"в слое welltarget."
+            )
+            return
+
+        # ==========================================
+        # 4. Получаем type из атрибутов объекта
+        # ==========================================
+
+        source_type = source_target["type"]
+
+        if source_type is None:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                f"У цели с ID {target_id} "
+                f"не указан тип."
+            )
+            return
+
+        try:
+            source_type = int(source_type)
+        except (TypeError, ValueError):
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                f"Некорректный тип цели с ID {target_id}."
+            )
+            return
+
+        # ==========================================
+        # 5. Проектный тип -> фактический тип
+        # ==========================================
+
+        project_to_fact_type = {
+            0: 2,  # Кровля проект -> Кровля факт
+            1: 3,  # Подошва проект -> Подошва факт
+        }
+
+        fact_type = project_to_fact_type.get(source_type)
+
+        # Если исходная цель уже фактическая
+        if fact_type is None:
+            return
+
+        # ==========================================
+        # 6. Создаём новую feature
+        # ==========================================
+
+        actualTarget = QgsFeature(layer_target.fields())
+
+        # Копируем все атрибуты исходной цели
+        # кроме id и type
+        for field in layer_target.fields():
+
+            field_name = field.name()
+
+            if field_name in ("fid", "id", "type"):
+                continue
+
+            actualTarget[field_name] = source_target[field_name]
+
+        # ==========================================
+        # 7. Получаем новый ID
+        # ==========================================
+
+        max_id = 0
+
+        for feature in layer_target.getFeatures():
+
+            try:
+                feature_id = int(feature["id"])
+
+                if feature_id > max_id:
+                    max_id = feature_id
+
+            except (TypeError, ValueError):
+                continue
+
+        actualTarget["id"] = max_id + 1
+
+        # ==========================================
+        # 8. Устанавливаем фактический тип
+        # ==========================================
+
+        actualTarget["type"] = fact_type
+
+        # ==========================================
+        # 9. Записываем рассчитанные координаты
+        # ==========================================
+
+        actualTarget["north"] = north_f
+        actualTarget["east"] = east_f
+        actualTarget["tvdss"] = tvdss_f
+
+        # ==========================================
+        # 10. Получаем MD из tableTargets
+        # ==========================================
+
+        # md_item = tableTargets.item(source_row, 7)
+
+        # if md_item is not None and md_item.text().strip():
+
+        #     try:
+        #         md = float(
+        #             md_item.text().replace(",", ".")
+        #         )
+
+        #         actualTarget["depth"] = md
+
+        #     except (TypeError, ValueError):
+        #         pass
+
+        # ==========================================
+        # 11. Формируем геометрию фактической цели
+        # ==========================================
+
+        point = QgsPointXY(
+            east_f,
+            north_f
+        )
+
+        # CRS, в котором были рассчитаны координаты
+        crs_calculation = self.crsCurrentTarget
+
+        # CRS слоя welltarget
+        crs_layer = layer_target.crs()
+
+        if crs_calculation.isValid() and crs_layer.isValid():
+
+            if crs_calculation != crs_layer:
+
+                transform = QgsCoordinateTransform(
+                    crs_calculation,
+                    crs_layer,
+                    QgsProject.instance()
+                )
+
+                point = transform.transform(point)
+
+        actualTarget.setGeometry(
+            QgsGeometry.fromPointXY(point)
+        )
+
+        # ==========================================
+        # 12. Добавляем фактическую цель в welltarget
+        # ==========================================
+
+        layer_target.startEditing()
+
+        success = layer_target.addFeatures(
+            [actualTarget]
+        )
+
+        if not success:
+            layer_target.rollBack()
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Не удалось добавить фактическую "
+                "цель в слой welltarget."
+            )
+            return
+
+        # ==========================================
+        # 13. Сохраняем изменения
+        # ==========================================
+
+        if not layer_target.commitChanges():
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Фактическая цель была добавлена, "
+                "но не удалось сохранить изменения "
+                "в слое welltarget."
+            )
+
+            return
+
+        # ==========================================
+        # 14. Обновляем слой
+        # ==========================================
+
+        layer_target.triggerRepaint()

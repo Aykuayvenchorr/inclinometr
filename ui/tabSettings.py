@@ -56,7 +56,6 @@ class TabSettings:
         """
         Формирует путь к GeoPackage.
         """
-
         self.gpkg_path = os.path.join(
             workdir,
             "InclinometryCalc.gpkg"
@@ -80,13 +79,9 @@ class TabSettings:
         """
 
         for layer in QgsProject.instance().mapLayers().values():
-
-            if (
-                layer.name() == self.wellhead_name
-                and layer.source().startswith(self.gpkg_path)
-            ):
+            if (layer.name() == self.wellhead_name
+                and layer.source().startswith(self.gpkg_path)):
                 return layer
-
         return None
 
 
@@ -100,13 +95,9 @@ class TabSettings:
         """
 
         for layer in QgsProject.instance().mapLayers().values():
-
-            if (
-                layer.name() == self.welltarget_name
-                and layer.source().startswith(self.gpkg_path)
-            ):
+            if (layer.name() == self.welltarget_name
+                and layer.source().startswith(self.gpkg_path)):
                 return layer
-
         return None
 
 
@@ -118,15 +109,10 @@ class TabSettings:
         Возвращает слой, если он уже загружен.
         Иначе возвращает None.
         """
-
         for layer in QgsProject.instance().mapLayers().values():
-
-            if (
-                layer.name() == self.wellbore_name
-                and layer.source().startswith(self.gpkg_path)
-            ):
+            if (layer.name() == self.wellbore_name
+                and layer.source().startswith(self.gpkg_path)):
                 return layer
-
         return None
 
 
@@ -165,16 +151,10 @@ class TabSettings:
             return
 
 
-        # ==========================================
         # 2. Получаем путь к GeoPackage
-        # ==========================================
-
         self.gpkg_path = self.pathTodDB(workdir)
 
-        # ==========================================================
         # 4. Проверяем, существует ли wellhead_type в GeoPackage
-        # ==========================================================
-
         wellhead_type_uri = (
             f"{self.gpkg_path}|layername=wellhead_type"
         )
@@ -185,44 +165,20 @@ class TabSettings:
             "ogr"
         )
 
-        # ==========================================================
         # 2. Если wellhead_type отсутствует — создаём его
-        # ==========================================================
-
         if not wellhead_type_layer.isValid():
-
-            print("wellhead_type отсутствует.")
-            print("Создаём слой wellhead_type.")
-
             type_fields = QgsFields()
-
-            type_fields.append(
-                QgsField("id", QVariant.Int)
-            )
-
-            type_fields.append(
-                QgsField("name", QVariant.String)
-            )
-
-            type_options = (
-                QgsVectorFileWriter.SaveVectorOptions()
-            )
-
+            type_fields.append(QgsField("id", QVariant.Int))
+            type_fields.append(QgsField("name", QVariant.String))
+            type_options = (QgsVectorFileWriter.SaveVectorOptions())
             type_options.driverName = "GPKG"
             type_options.layerName = "wellhead_type"
 
             # Если GeoPackage уже существует,
             # создаём новый слой внутри него
             if os.path.isfile(self.gpkg_path):
-
-                type_options.actionOnExistingFile = (
-                    QgsVectorFileWriter.CreateOrOverwriteLayer
-                )
-
-            transform_context = (
-                QgsProject.instance().transformContext()
-            )
-
+                type_options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+            transform_context = QgsProject.instance().transformContext()
             type_writer = QgsVectorFileWriter.create(
                 self.gpkg_path,
                 type_fields,
@@ -232,25 +188,13 @@ class TabSettings:
                 type_options
             )
 
-            if type_writer.hasError() != (
-                QgsVectorFileWriter.NoError
-            ):
-
-                QMessageBox.critical(
-                    self.tab,
-                    "Ошибка создания wellhead_type",
-                    type_writer.errorMessage()
-                )
-
+            if type_writer.hasError() != QgsVectorFileWriter.NoError:
+                QMessageBox.critical(self.tab, "Ошибка создания wellhead_type", type_writer.errorMessage())
                 del type_writer
                 return
-
             del type_writer
 
-            # ------------------------------------------------------
             # Загружаем созданный wellhead_type
-            # ------------------------------------------------------
-
             wellhead_type_layer = QgsVectorLayer(
                 wellhead_type_uri,
                 "wellhead_type",
@@ -258,52 +202,37 @@ class TabSettings:
             )
 
             if not wellhead_type_layer.isValid():
-
                 QMessageBox.critical(
                     self.tab,
                     "Ошибка",
                     "Слой wellhead_type создан, "
                     "но не удалось его загрузить."
                 )
-
                 return
 
-            # ------------------------------------------------------
             # Заполняем справочник
-            # ------------------------------------------------------
-
             wellhead_type_layer.startEditing()
 
-            feature = QgsFeature(
-                wellhead_type_layer.fields()
-            )
+            feature = QgsFeature(wellhead_type_layer.fields())
 
             feature["id"] = 0
             feature["name"] = "Позиция"
 
             wellhead_type_layer.addFeature(feature)
 
-            feature = QgsFeature(
-                wellhead_type_layer.fields()
-            )
-
+            feature = QgsFeature(wellhead_type_layer.fields())
             feature["id"] = 1
             feature["name"] = "Устье"
 
             wellhead_type_layer.addFeature(feature)
-
             wellhead_type_layer.commitChanges()
-
-            print("wellhead_type создан и заполнен.")
-
 
         else:
 
             print("wellhead_type уже существует в БД.")
-        # ==========================================
-        # 3. Проверяем, не загружен ли уже
-        #    wellhead в проект QGIS
-        # ==========================================
+
+        self.loadTypeLayer("wellhead_type")
+        # 3. Проверяем, не загружен ли уже wellhead в проект QGIS
 
         loaded_layer = self.getWellheadLayer()
 
@@ -316,10 +245,7 @@ class TabSettings:
             )
             return
 
-        # ==========================================
-        # 4. Если GeoPackage существует,
-        #    проверяем наличие wellhead внутри БД
-        # ==========================================
+        # 4. Если GeoPackage существует, проверяем наличие wellhead внутри БД
 
         if os.path.isfile(self.gpkg_path):
             existing_layer = QgsVectorLayer(
@@ -328,26 +254,12 @@ class TabSettings:
                 "ogr"
             )
 
-            # ------------------------------------------
             # wellhead существует в БД
-            # ------------------------------------------
-
             if existing_layer.isValid():
-
-                print(
-                    "wellhead существует в БД, "
-                    "но ещё не загружен в проект."
-                )
-
                  # Сначала добавляем слой в проект
-                QgsProject.instance().addMapLayer(
-                    existing_layer
-                )
-
+                QgsProject.instance().addMapLayer(existing_layer)
                 # Затем настраиваем поле type
-                self.setupWellheadTypeField(
-                    existing_layer
-                )
+                self.setupWellheadTypeField(existing_layer)
                 self.tab.tabSettingsWellheadMLCBox.setLayer(existing_layer)
                 QMessageBox.information(
                     self.tab,
@@ -355,26 +267,14 @@ class TabSettings:
                     "Существующий слой wellhead "
                     "загружен из базы данных."
                 )
-
                 return
 
-        # ==========================================
         # 5. Если дошли сюда:
-        #
         # - БД не существует
         # ИЛИ
         # - БД существует, но wellhead в ней нет
-        #
         # Значит, создаём новый слой
-        # ==========================================
-
-        print("wellhead отсутствует в БД.")
-        print("Создаём новый слой.")
-
-
-        # ==========================================
         # 6. Поля слоя wellhead
-        # ==========================================
 
         fields = QgsFields()
 
@@ -397,41 +297,26 @@ class TabSettings:
         fields.append(QgsField("path", QVariant.String))
         fields.append(QgsField("note", QVariant.String))
 
-        # ==========================================
         # 7. Тип геометрии и CRS
-        # ==========================================
-
         geometry_type = QgsWkbTypes.Point
 
         crs = QgsCoordinateReferenceSystem("EPSG:4326")
 
-        # ==========================================
         # 8. Настройки создания GeoPackage
-        # ==========================================
-
         options = QgsVectorFileWriter.SaveVectorOptions()
 
         options.driverName = "GPKG"
         options.layerName = self.wellhead_name
 
-        # ==========================================
         # 9. Если GeoPackage уже существует,
         #    создаём слой внутри существующей БД
-        # ==========================================
-
         if os.path.isfile(self.gpkg_path):
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
 
-        # ==========================================
         # 10. Контекст преобразования координат
-        # ==========================================
-
         transform_context = QgsProject.instance().transformContext()
 
-        # ==========================================
         # 11. Создаём GeoPackage / слой
-        # ==========================================
-
         writer = QgsVectorFileWriter.create(
             self.gpkg_path,
             fields,
@@ -441,10 +326,7 @@ class TabSettings:
             options
         )
 
-        # ==========================================
         # 12. Проверяем результат создания
-        # ==========================================
-
         if writer.hasError() != (QgsVectorFileWriter.NoError):
             QMessageBox.critical(
                 self.tab,
@@ -455,34 +337,18 @@ class TabSettings:
             del writer
             return
 
-        # ==========================================
         # 13. Закрываем writer
-        # ==========================================
-
         del writer
 
-        # ==========================================
-        # 14. Загружаем созданный слой
-        # ==========================================
 
+        # 14. Загружаем созданный слой
         layer = QgsVectorLayer(
             f"{self.gpkg_path}|layername={self.wellhead_name}",
             f"{self.wellhead_name}",
             "ogr"
         )
 
-        # ==========================================
-        # 15. Проверяем загрузку
-        # ==========================================
-
-        print("Файл:", self.gpkg_path)
-        print("Файл существует:", os.path.exists(self.gpkg_path))
-        print("Слой valid:", layer.isValid())
-        print("Слой name:", layer.name())
-        print("Ошибка:", layer.error().message())
-
         if not layer.isValid():
-
             QMessageBox.critical(
                 self.tab,
                 "Ошибка",
@@ -490,13 +356,13 @@ class TabSettings:
                 "но не удалось его загрузить.\n\n"
                 f"Ошибка: {layer.error().message()}"
             )
-
             return
-
-
-        # ==========================================
+        rel_field_index = layer.fields().indexOf("rel")
+        layer.setDefaultValueDefinition(
+            rel_field_index,
+            QgsDefaultValue("true")
+        )
         # 16. Добавляем слой в проект QGIS
-        # ==========================================
 
         QgsProject.instance().addMapLayer(layer)
         self.tab.tabSettingsWellheadMLCBox.setLayer(layer)
@@ -507,28 +373,22 @@ class TabSettings:
         # если он уже загружен
         self.updateWellboreWellheadField()
 
-        # ==========================================================
         # 12. Настраиваем поле type
-        #
         # В выпадающем списке:
-        #
         # Позиция -> 0
         # Устье   -> 1
-        #
         # В БД сохраняется именно id.
-        # ==========================================================
 
         self.setupWellheadTypeField(layer)
-        # ==========================================
-        # 17. Сообщение
-        # ==========================================
 
+        # 17. Сообщение
         QMessageBox.information(
             self.tab,
             "Готово",
             "Новый слой wellhead создан "
             "и добавлен в QGIS."
         )
+
 
 
     def setupWellheadTypeField(self, layer):
@@ -1142,7 +1002,7 @@ class TabSettings:
                 excepted_layers.append(layer)
                 continue
 
-            if layer.geometryType() != QgsWkbTypes.NullGeometry:
+            if layer.geometryType() != QgsWkbTypes.LineGeometry:
                 excepted_layers.append(layer)
                 continue
 
@@ -1319,7 +1179,7 @@ class TabSettings:
             )
 
             feature["id"] = 0
-            feature["name"] = "Кровля"
+            feature["name"] = "Кровля проект"
 
             welltarget_type_layer.addFeature(feature)
 
@@ -1328,7 +1188,25 @@ class TabSettings:
             )
 
             feature["id"] = 1
-            feature["name"] = "Подошва"
+            feature["name"] = "Подошва проект"
+
+            welltarget_type_layer.addFeature(feature)
+
+            feature = QgsFeature(
+                welltarget_type_layer.fields()
+            )
+
+            feature["id"] = 2
+            feature["name"] = "Кровля факт"
+
+            welltarget_type_layer.addFeature(feature)
+
+            feature = QgsFeature(
+                welltarget_type_layer.fields()
+            )
+
+            feature["id"] = 3
+            feature["name"] = "Подошва факт"
 
             welltarget_type_layer.addFeature(feature)
 
@@ -1340,6 +1218,8 @@ class TabSettings:
         else:
 
             print("welltarget_type уже существует в БД.")
+
+        self.loadTypeLayer("welltarget_type")
         # ==========================================
         # 3. Проверяем, не загружен ли уже
         #    welltarget в проект QGIS
@@ -1512,16 +1392,6 @@ class TabSettings:
             "ogr"
         )
 
-        # ==========================================
-        # 15. Проверяем загрузку
-        # ==========================================
-
-        print("Файл:", self.gpkg_path)
-        print("Файл существует:", os.path.exists(self.gpkg_path))
-        print("Слой valid:", layer.isValid())
-        print("Слой name:", layer.name())
-        print("Ошибка:", layer.error().message())
-
         if not layer.isValid():
 
             QMessageBox.critical(
@@ -1534,7 +1404,11 @@ class TabSettings:
 
             return
 
-
+        rel_field_index = layer.fields().indexOf("rel")
+        layer.setDefaultValueDefinition(
+            rel_field_index,
+            QgsDefaultValue("true")
+        )
         # ==========================================
         # 16. Добавляем слой в проект QGIS
         # ==========================================
@@ -1586,10 +1460,7 @@ class TabSettings:
            - загружаем его в QGIS.
         """
 
-        # ==========================================
         # 1. Проверяем рабочую папку
-        # ==========================================
-
         workdir = self.tab.tabSettingsWorkdir.filePath()
 
         if not os.path.isdir(workdir):
@@ -1600,65 +1471,31 @@ class TabSettings:
             )
             return
 
-
-        # ==========================================
         # 2. Получаем путь к GeoPackage
-        # ==========================================
-
         self.gpkg_path = self.pathTodDB(workdir)
 
-        # ==========================================================
-        # 4. Проверяем, существует ли wellbore_type в GeoPackage
-        # ==========================================================
-
-        wellbore_type_uri = (
-            f"{self.gpkg_path}|layername=wellbore_type"
-        )
-
+        # 3. Проверяем, существует ли wellbore_type в GeoPackage
+        wellbore_type_uri = (f"{self.gpkg_path}|layername=wellbore_type")
         wellbore_type_layer = QgsVectorLayer(
             wellbore_type_uri,
             "wellbore_type",
             "ogr"
         )
 
-        # ==========================================================
-        # 2. Если wellbore_type отсутствует — создаём его
-        # ==========================================================
-
+        # 4. Если wellbore_type отсутствует — создаём его
         if not wellbore_type_layer.isValid():
-
-            print("wellbore_type отсутствует.")
-            print("Создаём слой wellbore_type.")
-
             type_fields = QgsFields()
-
-            type_fields.append(
-                QgsField("id", QVariant.Int)
-            )
-
-            type_fields.append(
-                QgsField("name", QVariant.String)
-            )
-
-            type_options = (
-                QgsVectorFileWriter.SaveVectorOptions()
-            )
-
+            type_fields.append(QgsField("id", QVariant.Int))
+            type_fields.append(QgsField("name", QVariant.String))
+            type_options = (QgsVectorFileWriter.SaveVectorOptions())
             type_options.driverName = "GPKG"
             type_options.layerName = "wellbore_type"
 
             # Если GeoPackage уже существует,
             # создаём новый слой внутри него
             if os.path.isfile(self.gpkg_path):
-
-                type_options.actionOnExistingFile = (
-                    QgsVectorFileWriter.CreateOrOverwriteLayer
-                )
-
-            transform_context = (
-                QgsProject.instance().transformContext()
-            )
-
+                type_options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+            transform_context = QgsProject.instance().transformContext()
             type_writer = QgsVectorFileWriter.create(
                 self.gpkg_path,
                 type_fields,
@@ -1667,49 +1504,25 @@ class TabSettings:
                 transform_context,
                 type_options
             )
-
-            if type_writer.hasError() != (
-                QgsVectorFileWriter.NoError
-            ):
-
-                QMessageBox.critical(
-                    self.tab,
-                    "Ошибка создания wellbore_type",
-                    type_writer.errorMessage()
-                )
-
+            if type_writer.hasError() != QgsVectorFileWriter.NoError:
+                QMessageBox.critical(self.tab, "Ошибка создания wellbore_type", type_writer.errorMessage())
                 del type_writer
                 return
-
             del type_writer
 
-            # ------------------------------------------------------
             # Загружаем созданный wellbore_type
-            # ------------------------------------------------------
-
             wellbore_type_layer = QgsVectorLayer(
                 wellbore_type_uri,
                 "wellbore_type",
                 "ogr"
             )
-
             if not wellbore_type_layer.isValid():
-
-                QMessageBox.critical(
-                    self.tab,
-                    "Ошибка",
-                    "Слой wellbore_type создан, "
-                    "но не удалось его загрузить."
-                )
-
+                QMessageBox.critical(self.tab, "Ошибка Слой wellbore_type создан но не удалось его загрузить.")
                 return
 
-            # ------------------------------------------------------
             # Заполняем справочник
-            # ------------------------------------------------------
-
             wellbore_type_layer.startEditing()
-
+            
             feature = QgsFeature(wellbore_type_layer.fields())
             feature["id"] = 0
             feature["name"] = "Основной проектный"
@@ -1748,27 +1561,16 @@ class TabSettings:
         else:
 
             print("wellbore_type уже существует в БД.")
-        # ==========================================
-        # 3. Проверяем, не загружен ли уже
-        #    welltarget в проект QGIS
-        # ==========================================
 
+        self.loadTypeLayer("wellbore_type")
+        # 3. Проверяем, не загружен ли уже wellbore в проект QGIS
         loaded_layer = self.getWellboreLayer()
-
         if loaded_layer is not None:
-            print("wellbore already загружен в проект.")
-            QMessageBox.information(
-                self.tab,
-                "Слой wellbore",
-                "Слой wellbore уже загружен в проект."
-            )
+            QMessageBox.information(self.tab, "Слой wellbore уже загружен в проект.")
             return
 
-        # ==========================================
         # 4. Если GeoPackage существует,
-        #    проверяем наличие welltarget внутри БД
-        # ==========================================
-
+        #    проверяем наличие wellbore внутри БД
         if os.path.isfile(self.gpkg_path):
             existing_layer = QgsVectorLayer(
                 f"{self.gpkg_path}|layername={self.wellbore_name}",
@@ -1776,57 +1578,24 @@ class TabSettings:
                 "ogr"
             )
 
-            # ------------------------------------------
             # wellbore существует в БД
-            # ------------------------------------------
-
             if existing_layer.isValid():
-
-                print(
-                    "wellbore существует в БД, "
-                    "но ещё не загружен в проект."
-                )
-
                  # Сначала добавляем слой в проект
-                QgsProject.instance().addMapLayer(
-                    existing_layer
-                )
-
+                QgsProject.instance().addMapLayer(existing_layer)
                 # Затем настраиваем поле type
-                self.setupWellboreTypeField(
-                    existing_layer
-                )
+                self.setupWellboreTypeField(existing_layer)
                 self.setupWellboreWellheadField(existing_layer)
                 self.connectWellheadSignals()
-
                 self.tab.tabSettingsBoresMLCBox.setLayer(existing_layer)
-                QMessageBox.information(
-                    self.tab,
-                    "Слой wellbore",
-                    "Существующий слой wellbore "
-                    "загружен из базы данных."
-                )
-
+                QMessageBox.information(self.tab, "Слой wellbore", "Существующий слой wellbore загружен из базы данных.")
                 return
 
-        # ==========================================
         # 5. Если дошли сюда:
-        #
         # - БД не существует
         # ИЛИ
         # - БД существует, но wellbore в ней нет
-        #
         # Значит, создаём новый слой
-        # ==========================================
-
-        print("wellbore отсутствует в БД.")
-        print("Создаём новый слой.")
-
-
-        # ==========================================
         # 6. Поля слоя wellbore
-        # ==========================================
-
         fields = QgsFields()
 
         fields.append(QgsField("id", QVariant.Int))
@@ -1840,41 +1609,24 @@ class TabSettings:
         fields.append(QgsField("rel", QVariant.Bool))
         fields.append(QgsField("note", QVariant.String))
 
-        # ==========================================
         # 7. Тип геометрии и CRS
-        # ==========================================
+        geometry_type = QgsWkbTypes.LineStringZ
+        crs = QgsCoordinateReferenceSystem("EPSG:4326")
 
-        geometry_type = QgsWkbTypes.NoGeometry
-
-        crs = QgsCoordinateReferenceSystem()
-
-        # ==========================================
         # 8. Настройки создания GeoPackage
-        # ==========================================
-
         options = QgsVectorFileWriter.SaveVectorOptions()
 
         options.driverName = "GPKG"
         options.layerName = self.wellbore_name
 
-        # ==========================================
-        # 9. Если GeoPackage уже существует,
-        #    создаём слой внутри существующей БД
-        # ==========================================
-
+        # 9. Если GeoPackage уже существует, создаём слой внутри существующей БД
         if os.path.isfile(self.gpkg_path):
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
 
-        # ==========================================
         # 10. Контекст преобразования координат
-        # ==========================================
-
         transform_context = QgsProject.instance().transformContext()
 
-        # ==========================================
         # 11. Создаём GeoPackage / слой
-        # ==========================================
-
         writer = QgsVectorFileWriter.create(
             self.gpkg_path,
             fields,
@@ -1884,10 +1636,7 @@ class TabSettings:
             options
         )
 
-        # ==========================================
         # 12. Проверяем результат создания
-        # ==========================================
-
         if writer.hasError() != (QgsVectorFileWriter.NoError):
             QMessageBox.critical(
                 self.tab,
@@ -1898,34 +1647,17 @@ class TabSettings:
             del writer
             return
 
-        # ==========================================
         # 13. Закрываем writer
-        # ==========================================
-
         del writer
 
-        # ==========================================
         # 14. Загружаем созданный слой
-        # ==========================================
-
         layer = QgsVectorLayer(
             f"{self.gpkg_path}|layername={self.wellbore_name}",
             f"{self.wellbore_name}",
             "ogr"
         )
 
-        # ==========================================
-        # 15. Проверяем загрузку
-        # ==========================================
-
-        print("Файл:", self.gpkg_path)
-        print("Файл существует:", os.path.exists(self.gpkg_path))
-        print("Слой valid:", layer.isValid())
-        print("Слой name:", layer.name())
-        print("Ошибка:", layer.error().message())
-
         if not layer.isValid():
-
             QMessageBox.critical(
                 self.tab,
                 "Ошибка",
@@ -1933,18 +1665,16 @@ class TabSettings:
                 "но не удалось его загрузить.\n\n"
                 f"Ошибка: {layer.error().message()}"
             )
-
             return
-
-
-        # ==========================================
+        rel_field_index = layer.fields().indexOf("rel")
+        layer.setDefaultValueDefinition(
+            rel_field_index,
+            QgsDefaultValue("true")
+        )
         # 16. Добавляем слой в проект QGIS
-        # ==========================================
-
         QgsProject.instance().addMapLayer(layer)
         self.tab.tabSettingsBoresMLCBox.setLayer(layer)
 
-        # ==========================================================
         # 12. Настраиваем поле type
         #
         # В выпадающем списке:
@@ -1982,71 +1712,42 @@ class TabSettings:
 
         В БД сохраняется только id.
         """
-
         field_index = layer.fields().indexOf("wellhead_id")
-
         if field_index == -1:
             print("Поле wellhead_id отсутствует.")
             return
 
         # Получаем wellhead
         wellhead_layer = self.getWellheadLayer()
-
         value_map = []
 
         # Если wellhead уже существует и содержит объекты —
         # формируем список
         if wellhead_layer is not None and wellhead_layer.isValid():
-
-            if (
-                wellhead_layer.fields().indexOf("id") != -1
-                and wellhead_layer.fields().indexOf("name") != -1
-            ):
+            if (wellhead_layer.fields().indexOf("id") != -1
+                and wellhead_layer.fields().indexOf("name") != -1):
 
                 for feature in wellhead_layer.getFeatures():
-
                     wellhead_id = feature["id"]
                     wellhead_name = feature["name"]
-
                     if wellhead_id is None:
                         continue
-
                     if wellhead_name is None:
                         wellhead_name = ""
-
                     display_name = (
                         f"{wellhead_name} ({wellhead_id})"
                     )
-
                     value_map.append({
                         display_name: wellhead_id
                     })
 
-        # ==========================================================
         # ВАЖНО:
         # ValueMap устанавливаем ВСЕГДА.
-        #
         # Даже если value_map пока пустой.
-        # ==========================================================
 
-        widget_setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {
-                "map": value_map
-            }
-        )
-
-        layer.setEditorWidgetSetup(
-            field_index,
-            widget_setup
-        )
-
+        widget_setup = QgsEditorWidgetSetup("ValueMap", {"map": value_map})
+        layer.setEditorWidgetSetup(field_index, widget_setup)
         layer.updateFields()
-
-        print(
-            "wellhead_id настроен как ValueMap:",
-            value_map
-        )
 
     def updateWellboreWellheadField(self):
         """
@@ -2167,3 +1868,37 @@ class TabSettings:
             )
             return False
         return True
+
+    def loadTypeLayer(self, layer_name: str):
+        """
+        Загружает справочник типов из текущего GeoPackage в проект QGIS.
+        Если слой уже загружен — повторно не добавляет.
+        """
+        # Проверяем, что GeoPackage существует
+        if not os.path.isfile(self.gpkg_path):
+            return None
+
+        # Проверяем, не загружен ли уже этот справочник
+        for layer in QgsProject.instance().mapLayers().values():
+            if (
+                layer.name() == layer_name
+                and layer.source().startswith(self.gpkg_path)
+            ):
+                return layer
+
+        # Формируем URI
+        uri = f"{self.gpkg_path}|layername={layer_name}"
+
+        # Открываем слой
+        layer = QgsVectorLayer(
+            uri,
+            layer_name,
+            "ogr"
+        )
+
+        if not layer.isValid():
+            return None
+
+        # Добавляем в проект
+        QgsProject.instance().addMapLayer(layer)
+        return layer

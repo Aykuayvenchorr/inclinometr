@@ -13,7 +13,11 @@ from qgis.core import (
     QgsVectorLayer,
     QgsField,
     QgsFields,
-    QgsFeature
+    QgsFeature,
+    QgsGeometry,
+    QgsLineString,
+    QgsPoint,
+    QgsWkbTypes,
 )
 from qgis.utils import iface
 from qgis.gui import QgsMapToolIdentifyFeature
@@ -635,6 +639,8 @@ class TabInclinometry:
             azimuth_error=Geodezy.deg2rad(float(self.tab.txtErrAzimuth.text()))
         )
 
+        self.createWellbore()
+
         # # Верхняя траектория с учетом погрешностей
         # self.calculateInclinometry(
         #     zenith_error = Geodezy.deg2rad(float(self.tab.txtErrZenith.text())),
@@ -741,3 +747,276 @@ class TabInclinometry:
             break
 
         return self.currentDate
+
+    def createWellbore(self):
+        """
+        Создаёт фактический ствол скважины в слое wellbore
+        по рассчитанной основной траектории инклинометрии.
+
+        Координаты:
+            X = EAST
+            Y = NORTH
+            Z = TVDSS
+
+        Геометрия:
+            LineStringZ
+
+        Система координат исходных координат:
+            self.crs
+
+        Система координат слоя wellbore:
+            layer_wellbore.crs()
+        """
+
+        table = self.tab.tableInclinometry
+
+        # ==========================================================
+        # 1. Проверяем наличие точек
+        # ==========================================================
+
+        if self.rows < 2:
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Для построения ствола необходимо минимум две "
+                "точки инклинометрии."
+            )
+            return False
+
+        # ==========================================================
+        # 2. Получаем слой wellbore
+        # ==========================================================
+
+        layer_wellbore = None
+
+        for layer in QgsProject.instance().mapLayers().values():
+
+            if (
+                isinstance(layer, QgsVectorLayer)
+                and layer.name() == self.tab.tabSettingsBoresMLCBox.currentText()
+            ):
+                layer_wellbore = layer
+                break
+
+        # Если через ComboBox не нашли — ищем по типу линии
+        if layer_wellbore is None:
+
+            for layer in QgsProject.instance().mapLayers().values():
+
+                if not isinstance(layer, QgsVectorLayer):
+                    continue
+
+                if layer.geometryType() != QgsWkbTypes.LineGeometry:
+                    continue
+
+                if layer.name() == "wellbore":
+                    layer_wellbore = layer
+                    break
+
+        if layer_wellbore is None:
+
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Слой wellbore не найден в проекте."
+            )
+            return False
+
+        # ==========================================================
+        # 3. Проверяем CRS
+        # ==========================================================
+
+        crs_calculation = self.crs
+        crs_layer = layer_wellbore.crs()
+
+        if not crs_calculation.isValid():
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Не определена система координат расчёта."
+            )
+            return False
+
+        if not crs_layer.isValid():
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Не определена система координат слоя wellbore."
+            )
+            return False
+
+        # ==========================================================
+        # 4. Формируем точки траектории
+        # ==========================================================
+
+        points = []
+
+        for row in range(self.rows):
+
+            md_item = table.item(row, IncCol["MD"])
+            north_item = table.item(row, IncCol["NORTH"])
+            east_item = table.item(row, IncCol["EAST"])
+            tvdss_item = table.item(row, IncCol["TVDSS"])
+
+            if (
+                md_item is None
+                or north_item is None
+                or east_item is None
+                or tvdss_item is None
+            ):
+                continue
+
+            try:
+                north = float(north_item.text())
+                east = float(east_item.text())
+                tvdss = float(tvdss_item.text())
+
+            except ValueError:
+                continue
+
+            # ======================================================
+            # X = East
+            # Y = North
+            # Z = TVDSS
+            # ======================================================
+
+            point = QgsPoint(
+                east,
+                north,
+                tvdss
+            )
+
+            points.append(point)
+
+        # ==========================================================
+        # 5. Проверяем количество точек
+        # ==========================================================
+
+        if len(points) < 2:
+
+            QMessageBox.warning(
+                self.tab,
+                "Внимание",
+                "Не удалось получить достаточное количество "
+                "расчётных точек для построения ствола."
+            )
+            return False
+
+        # ==========================================================
+        # 6. Создаём 3D линию
+        # ==========================================================
+
+        line = QgsLineString(points)
+
+        geometry = QgsGeometry(line)
+
+        # ==========================================================
+        # 7. Преобразуем CRS
+        #
+        # ВАЖНО:
+        # QgsCoordinateTransform работает с XY.
+        # Поэтому Z (TVDSS) сохраняется.
+        # ==========================================================
+
+        if crs_calculation != crs_layer:
+
+            transform = QgsCoordinateTransform(
+                crs_calculation,
+                crs_layer,
+                QgsProject.instance()
+            )
+
+            geometry.transform(transform)
+
+        # ==========================================================
+        # 8. Удаляем предыдущий фактический ствол
+        # ==========================================================
+
+        layer_wellbore.startEditing()
+
+        layer_wellbore.deleteFeatures(
+            [feature.id() for feature in layer_wellbore.getFeatures()]
+        )
+
+        # ==========================================================
+        # 9. Создаём новый объект
+        # ==========================================================
+
+        feature = QgsFeature(layer_wellbore.fields())
+
+        feature.setGeometry(geometry)
+
+        # ==========================================================
+        # 10. Заполняем атрибуты
+        # ==========================================================
+
+        # id
+        id_index = layer_wellbore.fields().indexOf("id")
+
+        if id_index >= 0:
+            feature["id"] = 1
+
+        # type
+        type_index = layer_wellbore.fields().indexOf("type")
+
+        if type_index >= 0:
+            # 1 = Основной фактический
+            feature["type"] = 1
+
+        # name
+        name_index = layer_wellbore.fields().indexOf("name")
+
+        if name_index >= 0:
+            feature["name"] = "Фактический ствол"
+
+        # rel
+        rel_index = layer_wellbore.fields().indexOf("rel")
+
+        if rel_index >= 0:
+            feature["rel"] = True
+
+        # ==========================================================
+        # 11. Добавляем объект
+        # ==========================================================
+
+        success = layer_wellbore.addFeature(feature)
+
+        if not success:
+
+            layer_wellbore.rollBack()
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Не удалось добавить фактический ствол "
+                "в слой wellbore."
+            )
+            return False
+
+        # ==========================================================
+        # 12. Сохраняем
+        # ==========================================================
+
+        if not layer_wellbore.commitChanges():
+
+            QMessageBox.warning(
+                self.tab,
+                "Ошибка",
+                "Не удалось сохранить фактический ствол "
+                "в слой wellbore."
+            )
+            return False
+
+        # ==========================================================
+        # 13. Обновляем отображение
+        # ==========================================================
+
+        layer_wellbore.triggerRepaint()
+
+        QgsProject.instance().layerTreeRoot().findLayer(
+            layer_wellbore.id()
+        ).setItemVisibilityChecked(True)
+
+        return True

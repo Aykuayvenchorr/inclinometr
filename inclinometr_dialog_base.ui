@@ -44,7 +44,7 @@
     <number>-5</number>
    </property>
    <property name="currentIndex">
-    <number>2</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="tabSettings">
     <attribute name="icon">
@@ -90,7 +90,7 @@
           <x>10</x>
           <y>20</y>
           <width>521</width>
-          <height>53</height>
+          <height>63</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -125,7 +125,7 @@
           <x>10</x>
           <y>20</y>
           <width>521</width>
-          <height>53</height>
+          <height>63</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -152,7 +152,7 @@
         </size>
        </property>
        <property name="title">
-        <string>Станки</string>
+        <string>Стволы</string>
        </property>
        <widget class="QWidget" name="layoutWidget_3">
         <property name="geometry">
@@ -160,7 +160,7 @@
           <x>10</x>
           <y>20</y>
           <width>521</width>
-          <height>53</height>
+          <height>63</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_12">
@@ -804,7 +804,7 @@
       </rect>
      </property>
      <property name="columnCount">
-      <number>14</number>
+      <number>15</number>
      </property>
      <attribute name="horizontalHeaderCascadingSectionResizes">
       <bool>false</bool>
@@ -862,6 +862,11 @@
      <column>
       <property name="text">
        <string>R_факт</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>TVDSS_факт</string>
       </property>
      </column>
      <column/>
