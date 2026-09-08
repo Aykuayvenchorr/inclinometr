@@ -136,10 +136,7 @@ class TabSettings:
            - загружаем его в QGIS.
         """
 
-        # ==========================================
         # 1. Проверяем рабочую папку
-        # ==========================================
-
         workdir = self.tab.tabSettingsWorkdir.filePath()
 
         if not os.path.isdir(workdir):
@@ -174,8 +171,7 @@ class TabSettings:
             type_options.driverName = "GPKG"
             type_options.layerName = "wellhead_type"
 
-            # Если GeoPackage уже существует,
-            # создаём новый слой внутри него
+            # Если GeoPackage уже существует, создаём новый слой внутри него
             if os.path.isfile(self.gpkg_path):
                 type_options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
             transform_context = QgsProject.instance().transformContext()
@@ -308,8 +304,7 @@ class TabSettings:
         options.driverName = "GPKG"
         options.layerName = self.wellhead_name
 
-        # 9. Если GeoPackage уже существует,
-        #    создаём слой внутри существующей БД
+        # 9. Если GeoPackage уже существует, создаём слой внутри существующей БД
         if os.path.isfile(self.gpkg_path):
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
 
@@ -358,12 +353,8 @@ class TabSettings:
             )
             return
         rel_field_index = layer.fields().indexOf("rel")
-        layer.setDefaultValueDefinition(
-            rel_field_index,
-            QgsDefaultValue("true")
-        )
+        layer.setDefaultValueDefinition(rel_field_index, QgsDefaultValue("true"))
         # 16. Добавляем слой в проект QGIS
-
         QgsProject.instance().addMapLayer(layer)
         self.tab.tabSettingsWellheadMLCBox.setLayer(layer)
         # После загрузки wellhead
@@ -382,13 +373,7 @@ class TabSettings:
         self.setupWellheadTypeField(layer)
 
         # 17. Сообщение
-        QMessageBox.information(
-            self.tab,
-            "Готово",
-            "Новый слой wellhead создан "
-            "и добавлен в QGIS."
-        )
-
+        QMessageBox.information(self.tab, "Готово", "Новый слой wellhead создан и добавлен в QGIS.")
 
 
     def setupWellheadTypeField(self, layer):
@@ -405,26 +390,16 @@ class TabSettings:
             1
         """
 
-        # ==========================================================
         # 1. Ищем поле type
-        # ==========================================================
-
         type_field_index = layer.fields().indexOf("type")
 
         if type_field_index == -1:
             print("Поле type отсутствует в wellhead.")
             return
 
-        # ==========================================================
         # 2. Открываем wellhead_type из БД
-        #
-        # ВАЖНО:
-        # этот слой НЕ добавляется в проект
-        # ==========================================================
 
-        wellhead_type_uri = (
-            f"{self.gpkg_path}|layername=wellhead_type"
-        )
+        wellhead_type_uri = (f"{self.gpkg_path}|layername=wellhead_type")
 
         type_layer = QgsVectorLayer(
             wellhead_type_uri,
@@ -432,19 +407,7 @@ class TabSettings:
             "ogr"
         )
 
-        if not type_layer.isValid():
-
-            print(
-                "wellhead_type отсутствует или "
-                "не удалось его открыть."
-            )
-
-            return
-
-        # ==========================================================
         # 3. Формируем ValueMap
-        # ==========================================================
-
         value_map = []
 
         for feature in type_layer.getFeatures():
@@ -459,70 +422,30 @@ class TabSettings:
                 str(type_name): type_id
             })
 
-        # ==========================================================
         # 4. Проверяем справочник
-        # ==========================================================
-
         if not value_map:
-
-            print(
-                "В wellhead_type нет записей."
-            )
-
+            print("В wellhead_type нет записей.")
             return
 
-        print(
-            "ValueMap для type:",
-            value_map
-        )
+        print("ValueMap для type:", value_map)
 
-        # ==========================================================
         # 5. Создаём настройку ValueMap
-        # ==========================================================
+        widget_setup = QgsEditorWidgetSetup("ValueMap", {"map": value_map})
 
-        widget_setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {
-                "map": value_map
-            }
-        )
-
-        # ==========================================================
         # 6. Устанавливаем настройку на поле type
-        # ==========================================================
+        layer.setEditorWidgetSetup(type_field_index, widget_setup)
 
-        layer.setEditorWidgetSetup(
-            type_field_index,
-            widget_setup
-        )
-
-        # ==========================================================
         # 7. Устанавливаем значение по умолчанию
         # Позиция = id 0
-        # ==========================================================
+        layer.setDefaultValueDefinition(type_field_index, QgsDefaultValue("0"))
 
-        layer.setDefaultValueDefinition(
-            type_field_index,
-            QgsDefaultValue("0")
-        )
-
-        # ==========================================================
         # 8. Проверяем, что настройка действительно установилась
-        # ==========================================================
+        current_setup = layer.editorWidgetSetup(type_field_index)
 
-        current_setup = layer.editorWidgetSetup(
-            type_field_index
-        )
+        print("Тип виджета:", current_setup.type())
+        print("Конфигурация:", current_setup.config())
 
-        print(
-            "Тип виджета:",
-            current_setup.type()
-        )
 
-        print(
-            "Конфигурация:",
-            current_setup.config()
-        )
     def setupWelltargetTypeField(self, layer):
         """
         Настраивает поле type слоя welltarget
@@ -537,26 +460,16 @@ class TabSettings:
             1
         """
 
-        # ==========================================================
         # 1. Ищем поле type
-        # ==========================================================
-
         type_field_index = layer.fields().indexOf("type")
 
         if type_field_index == -1:
             print("Поле type отсутствует в welltarget.")
             return
 
-        # ==========================================================
         # 2. Открываем welltarget_type из БД
-        #
-        # ВАЖНО:
-        # этот слой НЕ добавляется в проект
-        # ==========================================================
 
-        welltarget_type_uri = (
-            f"{self.gpkg_path}|layername=welltarget_type"
-        )
+        welltarget_type_uri = (f"{self.gpkg_path}|layername=welltarget_type")
 
         type_layer = QgsVectorLayer(
             welltarget_type_uri,
@@ -565,18 +478,10 @@ class TabSettings:
         )
 
         if not type_layer.isValid():
-
-            print(
-                "welltarget_type отсутствует или "
-                "не удалось его открыть."
-            )
-
+            print("welltarget_type отсутствует или не удалось его открыть.")
             return
 
-        # ==========================================================
         # 3. Формируем ValueMap
-        # ==========================================================
-
         value_map = []
 
         for feature in type_layer.getFeatures():
@@ -587,69 +492,28 @@ class TabSettings:
             if type_id is None or type_name is None:
                 continue
 
-            value_map.append({
-                str(type_name): type_id
-            })
+            value_map.append({str(type_name): type_id})
 
-        # ==========================================================
         # 4. Проверяем справочник
-        # ==========================================================
 
         if not value_map:
-
-            print(
-                "В welltarget_type нет записей."
-            )
-
+            print("В welltarget_type нет записей.")
             return
 
-        print(
-            "ValueMap для type:",
-            value_map
-        )
+        print("ValueMap для type:", value_map)
 
-        # ==========================================================
         # 5. Создаём настройку ValueMap
-        # ==========================================================
+        widget_setup = QgsEditorWidgetSetup("ValueMap", {"map": value_map})
 
-        widget_setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {
-                "map": value_map
-            }
-        )
-
-        # ==========================================================
         # 6. Устанавливаем настройку на поле type
-        # ==========================================================
 
-        layer.setEditorWidgetSetup(
-            type_field_index,
-            widget_setup
-        )
+        layer.setEditorWidgetSetup(type_field_index, widget_setup)
+        layer.setDefaultValueDefinition(type_field_index, QgsDefaultValue("0"))
 
-        layer.setDefaultValueDefinition(
-                    type_field_index,
-                    QgsDefaultValue("0")
-                )
-
-        # ==========================================================
         # 7. Проверяем, что настройка действительно установилась
-        # ==========================================================
-
-        current_setup = layer.editorWidgetSetup(
-            type_field_index
-        )
-
-        print(
-            "Тип виджета:",
-            current_setup.type()
-        )
-
-        print(
-            "Конфигурация:",
-            current_setup.config()
-        )
+        current_setup = layer.editorWidgetSetup(type_field_index)
+        print("Тип виджета:", current_setup.type())
+        print("Конфигурация:", current_setup.config())
 
 
 
@@ -667,9 +531,7 @@ class TabSettings:
             1
         """
 
-        # ==========================================================
         # 1. Ищем поле type
-        # ==========================================================
 
         type_field_index = layer.fields().indexOf("type")
 
@@ -677,16 +539,9 @@ class TabSettings:
             print("Поле type отсутствует в wellbore.")
             return
 
-        # ==========================================================
         # 2. Открываем wellbore_type из БД
-        #
-        # ВАЖНО:
-        # этот слой НЕ добавляется в проект
-        # ==========================================================
 
-        wellbore_type_uri = (
-            f"{self.gpkg_path}|layername=wellbore_type"
-        )
+        wellbore_type_uri = (f"{self.gpkg_path}|layername=wellbore_type")
 
         type_layer = QgsVectorLayer(
             wellbore_type_uri,
@@ -695,18 +550,10 @@ class TabSettings:
         )
 
         if not type_layer.isValid():
-
-            print(
-                "wellbore_type отсутствует или "
-                "не удалось его открыть."
-            )
-
+            print("wellbore_type отсутствует или не удалось его открыть.")
             return
 
-        # ==========================================================
         # 3. Формируем ValueMap
-        # ==========================================================
-
         value_map = []
 
         for feature in type_layer.getFeatures():
@@ -721,38 +568,20 @@ class TabSettings:
                 str(type_name): type_id
             })
 
-        # ==========================================================
         # 4. Проверяем справочник
-        # ==========================================================
 
         if not value_map:
 
-            print(
-                "В wellbore_type нет записей."
-            )
-
+            print("В wellbore_type нет записей.")
             return
 
-        print(
-            "ValueMap для type:",
-            value_map
-        )
+        print("ValueMap для type:",value_map)
 
-        # ==========================================================
         # 5. Создаём настройку ValueMap
-        # ==========================================================
 
-        widget_setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {
-                "map": value_map
-            }
-        )
+        widget_setup = QgsEditorWidgetSetup("ValueMap", {"map": value_map})
 
-        # ==========================================================
         # 6. Устанавливаем настройку на поле type
-        # ==========================================================
-
         layer.setEditorWidgetSetup(
             type_field_index,
             widget_setup
@@ -763,23 +592,11 @@ class TabSettings:
                     QgsDefaultValue("0")
                 )
 
-        # ==========================================================
         # 7. Проверяем, что настройка действительно установилась
-        # ==========================================================
+        current_setup = layer.editorWidgetSetup(type_field_index)
 
-        current_setup = layer.editorWidgetSetup(
-            type_field_index
-        )
-
-        print(
-            "Тип виджета:",
-            current_setup.type()
-        )
-
-        print(
-            "Конфигурация:",
-            current_setup.config()
-        )
+        print("Тип виджета:", current_setup.type())
+        print("Конфигурация:", current_setup.config())
 
     def selectWellheadInComboBox(self):
         """
@@ -790,9 +607,7 @@ class TabSettings:
         wellhead_layer = self.getWellheadLayer()
 
         if wellhead_layer is not None:
-            self.tab.tabSettingsWellheadMLCBox.setLayer(
-                wellhead_layer
-            )
+            self.tab.tabSettingsWellheadMLCBox.setLayer(wellhead_layer)
 
     def selectWelltargetInComboBox(self):
         """
@@ -803,9 +618,7 @@ class TabSettings:
         welltarget_layer = self.getWelltargetLayer()
 
         if welltarget_layer is not None:
-            self.tab.tabSettingsTargetsMLCBox.setLayer(
-                welltarget_layer
-            )
+            self.tab.tabSettingsTargetsMLCBox.setLayer(welltarget_layer)
 
     def selectWellboreInComboBox(self):
         """
@@ -816,9 +629,7 @@ class TabSettings:
         wellbore_layer = self.getWellboreLayer()
 
         if wellbore_layer is not None:
-            self.tab.tabSettingsBoresMLCBox.setLayer(
-                wellbore_layer
-            )
+            self.tab.tabSettingsBoresMLCBox.setLayer(wellbore_layer)
 
     def filterWellheadLayers(self):
         """
@@ -856,10 +667,7 @@ class TabSettings:
 
         for layer in QgsProject.instance().mapLayers().values():
 
-            # ======================================================
             # Только точечные слои
-            # ======================================================
-
             if not isinstance(layer, QgsVectorLayer):
                 excepted_layers.append(layer)
                 continue
@@ -868,34 +676,19 @@ class TabSettings:
                 excepted_layers.append(layer)
                 continue
 
-            # ======================================================
             # Получаем поля слоя
-            # ======================================================
-
             layer_fields = {
                 field.name()
                 for field in layer.fields()
             }
 
-            # ======================================================
             # Проверяем наличие всех 17 полей
-            # ======================================================
-
             if not required_fields.issubset(layer_fields):
                 excepted_layers.append(layer)
 
-        # ==========================================================
         # Передаём ComboBox список слоёв, которые нужно исключить
-        # ==========================================================
 
-        combo.setExceptedLayerList(
-            excepted_layers
-        )
-
-        # print(
-        #     "EXCEPTED:",
-        #     [layer.name() for layer in excepted_layers]
-        # )
+        combo.setExceptedLayerList(excepted_layers)
 
     def filterWelltargetLayers(self):
         """
@@ -934,9 +727,7 @@ class TabSettings:
 
         for layer in QgsProject.instance().mapLayers().values():
 
-            # ======================================================
             # Только точечные слои
-            # ======================================================
 
             if not isinstance(layer, QgsVectorLayer):
                 excepted_layers.append(layer)
