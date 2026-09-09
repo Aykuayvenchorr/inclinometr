@@ -24,6 +24,7 @@ from qgis.core import (
 from PyQt5.QtCore import QVariant
 from qgis.utils import iface
 from qgis.gui import QgsMapToolIdentifyFeature
+from ..styles.styleManager import StyleManager
 
 
 class TabSettings:
@@ -36,6 +37,7 @@ class TabSettings:
         self.welltarget_name = ''
         self.wellbore_name = ''
         self.read_settings()
+        self.styleManager = StyleManager()
 
     def read_settings(self):
         # Получаем абсолютный путь к папке, где лежит этот скрипт
@@ -254,6 +256,7 @@ class TabSettings:
             if existing_layer.isValid():
                  # Сначала добавляем слой в проект
                 QgsProject.instance().addMapLayer(existing_layer)
+                self.styleManager.applyLayerStyle(existing_layer, "wellhead")
                 # Затем настраиваем поле type
                 self.setupWellheadTypeField(existing_layer)
                 self.tab.tabSettingsWellheadMLCBox.setLayer(existing_layer)
@@ -356,6 +359,7 @@ class TabSettings:
         layer.setDefaultValueDefinition(rel_field_index, QgsDefaultValue("true"))
         # 16. Добавляем слой в проект QGIS
         QgsProject.instance().addMapLayer(layer)
+        self.styleManager.applyLayerStyle(layer, "wellhead")
         self.tab.tabSettingsWellheadMLCBox.setLayer(layer)
         # После загрузки wellhead
         self.connectWellheadSignals()
@@ -1054,7 +1058,7 @@ class TabSettings:
                 QgsProject.instance().addMapLayer(
                     existing_layer
                 )
-
+                self.styleManager.applyLayerStyle(existing_layer, "welltarget")
                 # Затем настраиваем поле type
                 self.setupWelltargetTypeField(
                     existing_layer
@@ -1205,6 +1209,7 @@ class TabSettings:
         # ==========================================
 
         QgsProject.instance().addMapLayer(layer)
+        self.styleManager.applyLayerStyle(layer, "welltarget")
         self.tab.tabSettingsTargetsMLCBox.setLayer(layer)
 
         # ==========================================================
@@ -1373,6 +1378,7 @@ class TabSettings:
             if existing_layer.isValid():
                  # Сначала добавляем слой в проект
                 QgsProject.instance().addMapLayer(existing_layer)
+                self.styleManager.applyLayerStyle(existing_layer, "wellbore")
                 # Затем настраиваем поле type
                 self.setupWellboreTypeField(existing_layer)
                 self.setupWellboreWellheadField(existing_layer)
@@ -1432,7 +1438,7 @@ class TabSettings:
             QMessageBox.critical(
                 self.tab,
                 "Ошибка создания слоя",
-                f"Не удалось создать слой welltarget:\n"
+                f"Не удалось создать слой wellbore:\n"
                 f"{writer.errorMessage()}"
             )
             del writer
@@ -1452,7 +1458,7 @@ class TabSettings:
             QMessageBox.critical(
                 self.tab,
                 "Ошибка",
-                "Слой welltarget создан, "
+                "Слой wellbore создан, "
                 "но не удалось его загрузить.\n\n"
                 f"Ошибка: {layer.error().message()}"
             )
@@ -1464,6 +1470,7 @@ class TabSettings:
         )
         # 16. Добавляем слой в проект QGIS
         QgsProject.instance().addMapLayer(layer)
+        self.styleManager.applyLayerStyle(layer, "wellbore")
         self.tab.tabSettingsBoresMLCBox.setLayer(layer)
 
         # 12. Настраиваем поле type
