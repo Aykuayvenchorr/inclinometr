@@ -686,25 +686,20 @@ class TabTarget:
         # 7. Получаем новый ID
         # ==========================================
 
-        # max_id = 0
+        max_id = 0
 
-        # for feature in layer_target.getFeatures():
+        for feature in layer_target.getFeatures():
 
-        #     try:
-        #         feature_id = int(feature["id"])
+            try:
+                feature_id = int(feature["id"])
 
-        #         if feature_id > max_id:
-        #             max_id = feature_id
+                if feature_id > max_id:
+                    max_id = feature_id
 
-        #     except (TypeError, ValueError):
-        #         continue
+            except (TypeError, ValueError):
+                continue
 
-        # actualTarget["id"] = max_id + 1
-        actualTarget["id"] = (
-        self.tab.tabSettings.idCounter.getNextId(
-                "welltarget"
-            )
-        )
+        actualTarget["id"] = max_id + 1
 
         # ==========================================
         # 8. Устанавливаем фактический тип
